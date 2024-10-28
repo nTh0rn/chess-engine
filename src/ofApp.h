@@ -11,10 +11,14 @@ class ofApp : public ofBaseApp{
 		void draw();
 		void drawBoard();
 		void updateVisualBoard();
+		void makeMove(int from, int to, int flag);
 
 		Board board;
 		array<ofImage, 64> visualBoard;
 		ofImage bP, bR, bN, bB, bQ, bK, wP, wR, wN, wB, wQ, wK, emptySquare;
+		bool pieceHeld;
+		int pieceHeldPos;
+		ofImage pieceHeldImage;
 
 
 		void keyPressed(int key);

@@ -26,10 +26,12 @@ public:
 
 	string genFen();
 	void generateMoves();
-	bool kingSafe();
+	vector<array<int, 3>> generateMove(int pos);
+	bool kingSafe(array<int, 3> move);
 	bool inCheck(int pos);
 	vector<array<int, 3>> generatePawnMoves(int pos);
 	vector<array<int, 3>> generateSlidingMoves(int pos, int type);
-	vector<array<int, 3>> generatePositionMoves(int pos, array<int, 8> area);
+	vector<array<int, 3>> generatePositionMoves(int pos, array<int, 8> area, bool king = false);
+	void makeMove(array<int, 3> move);
 
 };
