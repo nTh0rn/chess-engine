@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ofMain.h"
+#include "../include/Board.h"
 
 class ofApp : public ofBaseApp{
 
@@ -8,6 +9,13 @@ class ofApp : public ofBaseApp{
 		void setup();
 		void update();
 		void draw();
+		void drawBoard();
+		void updateVisualBoard();
+
+		Board board;
+		array<ofImage, 64> visualBoard;
+		ofImage bP, bR, bN, bB, bQ, bK, wP, wR, wN, wB, wQ, wK, emptySquare;
+
 
 		void keyPressed(int key);
 		void keyReleased(int key);
