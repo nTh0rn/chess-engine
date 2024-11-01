@@ -12,9 +12,7 @@ class Board {
 public:
 	Board();
 	Board(string fen);
-	bool canCastle[4] = {false, false, false, false}; //K Q k q
-	bool checks[2] = { false, false }; //white, black
-	bool checkmate = false;
+	array<bool, 4> canCastle = {false, false, false, false}; //K Q k q
 	int enPassant = { -1 };
 	char square[64] = { ' ' };
 	vector<array<int, 3>> moves; //from, to, flag (0=no capture, 1=capture, 2=en-passantable move, 3=en-passant, 4=q castle, 5=k castle, 6,7,8,9=q,r,b,n promotion)
@@ -22,8 +20,9 @@ public:
 	int halfMoves = 0;
 	int plys = 0;
 	int whosTurn = 0;
+	array<int, 2> kingPos;
 
-
+	
 	string genFen();
 	void generateMoves();
 	vector<array<int, 3>> generateMove(int pos);
@@ -33,5 +32,7 @@ public:
 	vector<array<int, 3>> generateSlidingMoves(int pos, int type);
 	vector<array<int, 3>> generatePositionMoves(int pos, array<int, 8> area, bool king = false);
 	void makeMove(array<int, 3> move);
+	void unmakeMove(array<int, 3> moveToUnmake, int unmakeEnPassant, array<bool, 4> unmakeCanCastle, char unmakeTakenPiece);
+	
 
 };

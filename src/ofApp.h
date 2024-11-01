@@ -19,6 +19,8 @@ class ofApp : public ofBaseApp{
 		bool pieceHeld;
 		int pieceHeldPos;
 		ofImage pieceHeldImage;
+		bool promoting = false;
+		int promotePos;
 
 
 		void keyPressed(int key);
