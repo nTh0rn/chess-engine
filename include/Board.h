@@ -6,6 +6,11 @@
 #include <stdio.h>
 #include <iostream>
 #include <algorithm>
+#include <thread>
+#include <future>
+#include <atomic>
+#include <limits>
+#include <mutex>
 using namespace std;
 
 class Board {
@@ -22,17 +27,23 @@ public:
 	int whosTurn = 0;
 	array<int, 2> kingPos;
 
-	
+	void show();
 	string genFen();
+	double evaluate();
+	string posToCoords(int pos);
 	void generateMoves();
 	vector<array<int, 3>> generateMove(int pos);
 	bool kingSafe(array<int, 3> move);
-	bool inCheck(int pos);
+	bool inCheck(int pos, int turn);
 	vector<array<int, 3>> generatePawnMoves(int pos);
 	vector<array<int, 3>> generateSlidingMoves(int pos, int type);
-	vector<array<int, 3>> generatePositionMoves(int pos, array<int, 8> area, bool king = false);
+	vector<array<int, 3>> generatePositionalMoves(int pos, array<int, 8> area, bool king = false);
 	void makeMove(array<int, 3> move);
 	void unmakeMove(array<int, 3> moveToUnmake, int unmakeEnPassant, array<bool, 4> unmakeCanCastle, char unmakeTakenPiece);
+	int depthSearch(int depth, int displayAtDepth = -1);
+	double negaMax(int depth, double alpha, double beta);
+	void makeBotMove();
+	double threadedSearch(array<int, 3> move);
 	
 
 };

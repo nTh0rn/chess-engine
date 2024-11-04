@@ -2,9 +2,11 @@
 
 //--------------------------------------------------------------
 void ofApp::setup(){
-	//board = Board("rnbqkbnr/pppp1ppp/8/8/8/7p/PPPPPPPP/RNBQKBNR w KQkq - 1 4");
+	board = Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 	//board = Board("rnb1kbnr/pppp1ppp/4p3/8/6q1/2N2PP1/PPPPP2P/R1BQKBNR b KQkq - 1 4");
-	board = Board("8/PPPPPPPP/8/4k3/1K6/8/pppppppp/8 w - - 0 1");
+	//board = Board("8/PPPPPPPP/8/4k3/1K6/8/pppppppp/8 w - - 0 1");
+
+	//board = Board("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ");
 	cout << board.genFen();
 	
 	bP.load("images/bP.png");
@@ -21,6 +23,13 @@ void ofApp::setup(){
 	wK.load("images/wK.png");
 	emptySquare.load("images/Empty.png");
 	//board.generateMoves();
+	board.generateMoves();
+	cout << "\nMoves size" << board.moves.size() << "\n";
+	//for (int i = 1; i < 9; i++) {
+	//	cout << "\nDepth of " << i << " " << board.depthSearch(i);
+	//}
+	//cout << "\nDepth of " << 5 << " \n" << board.depthSearch(5, 5);
+	
 	
 }
 
@@ -42,6 +51,7 @@ void ofApp::drawBoard() {
 	ofColor lightTile(240, 217, 181);
 	ofColor tileColor = lightTile;
 	array<ofImage, 4> promotionPieces = { bQ, bR, bB, bN };
+	array<int, 4> promotionPiecesHighlights = { 100, 100, 100, 100 };
 	vector<array<int, 3>> moves = {};
 	for (int pos = 0; pos < 64; pos++) {
 		if ((pos + 1) % 8 != 1) {
@@ -53,16 +63,39 @@ void ofApp::drawBoard() {
 		visualBoard[pos].draw(80 * (pos % 8), 80 * int(pos / 8), 80, 80);
 	}
 	if (promoting) {
-		ofSetColor(0, 0, 0, 100);
-		ofDrawRectangle(0, 0, 640, 640);
-		if (tolower(board.square[pieceHeldPos]) != 'p') {
+		if (board.square[pieceHeldPos] == 'P') {
 			promotionPieces = { wQ, wR, wB, wN };
 		}
-
-		promotionPieces[0].draw(160, 140, 80, 80);
-		promotionPieces[1].draw(240, 140, 80, 80);
-		promotionPieces[2].draw(320, 140, 80, 80);
-		promotionPieces[3].draw(400, 140, 80, 80);
+		if (mouseY > 240 && mouseY < 320 && mouseX > 160 && mouseX < 480) {
+			ofSetColor(255);
+			if (mouseX > 160 && mouseX < 240) {
+				promotionPiecesHighlights[0] = 255;
+				promotionPieces[0].draw(80 * (promotePos % 8), 80 * int(promotePos / 8), 80, 80);
+			} else if (mouseX > 240 && mouseX < 320) {
+				promotionPiecesHighlights[1] = 255;
+				promotionPieces[1].draw(80 * (promotePos % 8), 80 * int(promotePos / 8), 80, 80);
+			} else if (mouseX > 320 && mouseX < 400) {
+				promotionPiecesHighlights[2] = 255;
+				promotionPieces[2].draw(80 * (promotePos % 8), 80 * int(promotePos / 8), 80, 80);
+			} else if (mouseX > 400 && mouseX < 480) {
+				promotionPiecesHighlights[3] = 255;
+				promotionPieces[3].draw(80 * (promotePos % 8), 80 * int(promotePos / 8), 80, 80);
+			}
+		} else {
+			promotionPiecesHighlights = { 255, 255, 255, 255 };
+			pieceHeldImage.draw(80 * (pieceHeldPos % 8), 80 * int(pieceHeldPos / 8), 80, 80);
+		}
+		ofSetColor(0, 200);
+		ofDrawRectangle(0, 0, 640, 640);
+		
+		ofSetColor(255, promotionPiecesHighlights[0]);
+		promotionPieces[0].draw(160, 240, 80, 80);
+		ofSetColor(255, promotionPiecesHighlights[1]);
+		promotionPieces[1].draw(240, 240, 80, 80);
+		ofSetColor(255, promotionPiecesHighlights[2]);
+		promotionPieces[2].draw(320, 240, 80, 80);
+		ofSetColor(255, promotionPiecesHighlights[3]);
+		promotionPieces[3].draw(400, 240, 80, 80);
 		
 	} else if (pieceHeld) {
 		
@@ -155,14 +188,24 @@ void ofApp::updateVisualBoard() {
 }
 
 void ofApp::makeMove(int from, int to, int flag) {
+	cout << "\n Eval: " << board.evaluate() << "\n";
 	vector<array<int, 3>> moves;
 
 	moves = board.generateMove(from);
 
 	for (array<int, 3> move : moves) {
-		if (move[1] == to) {
-			board.makeMove(move);
-			return;
+		if (flag == -1) {
+			if (move[1] == to) {
+				board.makeMove(move);
+				board.makeBotMove();
+				break;
+			}
+		} else {
+			if (move[0] == from && move[1] == to && move[2] == flag) {
+				board.makeMove(move);
+				board.makeBotMove();
+				break;
+			}
 		}
 	}
 	cout << "Move not found from: " << from << " to: " << to << " flag: " << flag << "\n";
@@ -209,29 +252,27 @@ void ofApp::mousePressed(int x, int y, int button){
 				promotePos = mPos;
 				return;
 			}
-			if (board.square[mPos] != ' ') {
-				makeMove(pieceHeldPos, mPos, 1);
-			} else {
-				makeMove(pieceHeldPos, mPos, 0);
-			}
+			makeMove(pieceHeldPos, mPos, -1);
 			pieceHeld = false;
 		} else {
 			pieceHeld = false;
 		}
 	} else {
 		cout << mouseX << ", " << mouseY << "\n";
-		if (mouseX > 160 && mouseX < 240) {
-			cout << "PromotingQ\n";
-			makeMove(pieceHeldPos, promotePos, 6);
-		} else if (mouseX > 240 && mouseX < 320) {
-			cout << "PromotingR\n";
-			makeMove(pieceHeldPos, promotePos, 7);
-		} else if (mouseX > 320 && mouseX < 400) {
-			cout << "PromotingB\n";
-			makeMove(pieceHeldPos, promotePos, 8);
-		} else if (mouseX > 400 && mouseX < 480) {
-			cout << "PromotingN\n";
-			makeMove(pieceHeldPos, promotePos, 9);
+		if (mouseY > 240 && mouseY < 320 && mouseX > 160 && mouseX < 480) {
+			if (mouseX > 160 && mouseX < 240) {
+				cout << "PromotingQ\n";
+				makeMove(pieceHeldPos, promotePos, 6);
+			} else if (mouseX > 240 && mouseX < 320) {
+				cout << "PromotingR\n";
+				makeMove(pieceHeldPos, promotePos, 7);
+			} else if (mouseX > 320 && mouseX < 400) {
+				cout << "PromotingB\n";
+				makeMove(pieceHeldPos, promotePos, 8);
+			} else if (mouseX > 400 && mouseX < 480) {
+				cout << "PromotingN\n";
+				makeMove(pieceHeldPos, promotePos, 9);
+			}
 		}
 		promoting = false;
 		pieceHeld = false;
@@ -247,7 +288,7 @@ void ofApp::mouseReleased(int x, int y, int button){
 			promotePos = mPos;
 			return;
 		}
-		makeMove(pieceHeldPos, mPos, 0);
+		makeMove(pieceHeldPos, mPos, -1);
 		pieceHeld = false;
 	}
 }
