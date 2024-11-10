@@ -198,13 +198,13 @@ void ofApp::makeMove(int from, int to, int flag) {
 			if (move[1] == to) {
 				board.makeMove(move);
 				board.makeBotMove();
-				break;
+				return;
 			}
 		} else {
 			if (move[0] == from && move[1] == to && move[2] == flag) {
 				board.makeMove(move);
 				board.makeBotMove();
-				break;
+				return;
 			}
 		}
 	}

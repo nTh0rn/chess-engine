@@ -11,6 +11,7 @@
 #include <atomic>
 #include <limits>
 #include <mutex>
+
 using namespace std;
 
 class Board {
@@ -21,12 +22,13 @@ public:
 	int enPassant = { -1 };
 	char square[64] = { ' ' };
 	vector<array<int, 3>> moves; //from, to, flag (0=no capture, 1=capture, 2=en-passantable move, 3=en-passant, 4=q castle, 5=k castle, 6,7,8,9=q,r,b,n promotion)
+	vector <int> moveValues;
+
 	int fullMoves = 0;
 	int halfMoves = 0;
 	int plys = 0;
 	int whosTurn = 0;
 	array<int, 2> kingPos;
-
 	void show();
 	string genFen();
 	double evaluate();
@@ -41,9 +43,10 @@ public:
 	void makeMove(array<int, 3> move);
 	void unmakeMove(array<int, 3> moveToUnmake, int unmakeEnPassant, array<bool, 4> unmakeCanCastle, char unmakeTakenPiece);
 	int depthSearch(int depth, int displayAtDepth = -1);
-	double negaMax(int depth, double alpha, double beta);
+	double negaMax(int depth, double alpha, double beta, bool taking=false);
 	void makeBotMove();
 	double threadedSearch(array<int, 3> move);
-	
-
+	void sortMoves(vector<int>& arr, int low, int high);
+	int sortMovesPartition(vector<int>& arr, int low, int high);
+	void generateMoveValues();
 };

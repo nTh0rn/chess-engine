@@ -128,7 +128,7 @@ string Board::genFen() {
 	if (canCastle[0]) { fen += "K"; }
 	if (canCastle[1]) { fen += "Q"; }
 	if (canCastle[2]) { fen += "k"; }
-	if (canCastle[3]) { fen += "q"; }
+	if (canCastle[3]) { fen += "q"; }//butts
 
 	//Moves & Half moves made
 	fen += " ";
@@ -142,8 +142,7 @@ double Board::evaluate() {
 	double output = 0;
 	int whitePos;
 	int blackPos;
-	int factor = (whosTurn == 1 ? 1 : -1);
-	int weight = 300;
+	int weight = 100;
 	double pawn[64] = { 0,  0,  0,  0,  0,  0,  0,  0,
 		50, 50, 50, 50, 50, 50, 50, 50,
 		10, 10, 20, 30, 30, 20, 10, 10,
@@ -206,40 +205,40 @@ double Board::evaluate() {
 			blackPos = ((7 - col) * 8) + row;
 			switch (square[whitePos]) {
 			case 'p':
-				output += pawn[blackPos]/weight + (-1*(factor));
+				output += -pawn[blackPos]/weight + -1;
 				break;
 			case 'r':
-				output += rook[blackPos]/weight + (-5*(factor));
+				output += -rook[blackPos]/weight + -5;
 				break;
 			case 'b':
-				output += bishop[blackPos]/weight + (-3*(factor));
+				output += -bishop[blackPos]/weight + -3;
 				break;
 			case 'n':
-				output += knight[blackPos]/weight + (-3*(factor));
+				output += -knight[blackPos]/weight + -3;
 				break;
 			case 'k':
-				output += king[blackPos]/weight + (-100000*(factor));
+				output += -king[blackPos]/weight + -100000;
 				break;
 			case 'q':
-				output += queen[blackPos]/weight + (-9*(factor));
+				output += -queen[blackPos]/weight + -9;
 				break;
 			case 'P':
-				output += pawn[whitePos]/weight + (1*(factor));
+				output += pawn[whitePos]/weight + 1;
 				break;
 			case 'R':
-				output += rook[whitePos]/weight + (5*(factor));
+				output += rook[whitePos]/weight + 5;
 				break;
 			case 'B':
-				output += bishop[whitePos]/weight + (3*(factor));
+				output += bishop[whitePos]/weight + 3;
 				break;
 			case 'N':
-				output += knight[whitePos]/weight + (3*(factor));
+				output += knight[whitePos]/weight + 3;
 				break;
 			case 'K':
-				output += king[whitePos]/weight + (100000*(factor));
+				output += king[whitePos]/weight + 100000;
 				break;
 			case 'Q':
-				output += queen[whitePos]/weight + (9*(factor));
+				output += queen[whitePos]/weight + 9;
 				break;
 			}
 		}
@@ -369,11 +368,67 @@ bool Board::inCheck(int pos, int turn) {
 	return false;
 }
 
+int Board::sortMovesPartition(vector <int>& moveValues, int low, int high) {
+	int pivot = moveValues[high];
+	int i = low - 1;
+
+	for (int j = low; j <= high - 1; j++) {
+		if (moveValues[j] < pivot) {
+			i++;
+			swap(moveValues[i], moveValues[j]);
+			swap(moves[i], moves[j]);
+		}
+	}
+
+	swap(moveValues[i + 1], moveValues[high]);
+	swap(moves[i + 1], moves[high]);
+	return i + 1;
+}
+
+void Board::sortMoves(vector <int>& moveValues, int low, int high) {
+	if (low < high) {
+		int part = sortMovesPartition(moveValues, low, high);
+		sortMoves(moveValues, low, part - 1);
+		sortMoves(moveValues, part + 1, high);
+	}
+}
+
+void Board::generateMoveValues() {
+	moveValues.clear();
+	int taking;
+	for (array<int, 3> move : moves) {
+		taking = (move[2] == 3 || square[move[1]] != ' ') ? 2 : 1;
+		switch (tolower(square[move[0]])) {
+		case 'p':
+			moveValues.push_back(-1 * taking);
+			break;
+		case 'r':
+			moveValues.push_back(-5 * taking);
+			break;
+		case 'n':
+			moveValues.push_back(-3 * taking);
+			break;
+		case 'b':
+			moveValues.push_back(-3 * taking);
+			break;
+		case 'q':
+			moveValues.push_back(-9 * taking);
+			break;
+		case 'k':
+			moveValues.push_back(-5 * taking);
+			break;
+		default:
+			cout << "What the fuck";
+		}
+	}
+}
+
+
 //Generate all possible moves for whoever's turn it is
 void Board::generateMoves() {
 	moves.clear();
 	vector<array<int, 3>> pieceMoves;
-	for (int pos = 0; pos < 64; pos++) {
+	for (int pos = 63; pos >= 0; pos--) {
 
 		//Ensure only moves for whoever's turn it is get calculated
 		if (((square[pos] < 97) ? 1 : 0) != whosTurn || square[pos] == ' ') {
@@ -406,6 +461,10 @@ void Board::generateMoves() {
 		}
 		moves.insert(moves.end(), pieceMoves.begin(), pieceMoves.end());
 	}
+	generateMoveValues();
+	int n = moveValues.size();
+
+	sortMoves(moveValues, 0, n - 1);
 }
 
 //Generate a single piece's possible moves
@@ -442,7 +501,10 @@ vector<array<int,3>> Board::generateMove(int pos) {
 		movess = generatePositionalMoves(pos, {-9, -8, -7, -1, 1, 7, 8, 9}, true);
 		break;
 	}
-
+	//std::sort(movess.begin(), movess.end(), compareMove);
+	//sort(movess.begin(), movess.end(), [](array<int, 3> f1, array<int, 3> f2) {
+	//	return (f1[2] > f2[2]);
+	//	});
 	return movess;
 
 }
@@ -849,10 +911,10 @@ int Board::depthSearch(int depth, int displayAtDepth) {
 	}
 }
 
-double Board::negaMax(int depth, double alpha, double beta) {
-	if (depth == 0) {
-		//cout << "Returning evaluation " << evaluate() << "\n";
-		return -evaluate();
+double Board::negaMax(int depth, double alpha, double beta, bool taking) {
+	if (depth <= 0 && !taking) {
+
+		return evaluate()*(whosTurn == 1 ? 1 : -1);
 	} else {
 		array<int, 3> moveToUnmake = { -1, -1, -1 };
 		int unmakeEnPassant = -1;
@@ -860,29 +922,31 @@ double Board::negaMax(int depth, double alpha, double beta) {
 		char unmakeTakenPiece = ' ';
 		vector<array<int, 3>> moves = {};
 		double value = -10000000000;
-		for(int pos = 0; pos < 64; pos++) {
-			if (square[pos] == ' ') {
-				continue;
+		generateMoves();
+		//sort(this->moves.begin(), this->moves.end(), [](array<int, 3> f1, array<int, 3> f2) {
+		//	return (f1[2] > f2[2] || (f1[2] == 2 && f2[2] != 2));
+		//	});
+		moves = this->moves;
+
+		for (auto move : moves) {
+			moveToUnmake = move;
+			unmakeEnPassant = enPassant;
+			unmakeCanCastle = canCastle;
+			unmakeTakenPiece = square[move[1]];
+			makeMove(move);
+			if (move[2] == 1 || move[2] == 3) {
+				value = max(value, -negaMax(depth - 1, -beta, -alpha, true));
+			} else {
+				value = max(value, -negaMax(depth - 1, -beta, -alpha));
 			}
-			if ((square[pos] < 97 ? 1 : 0) == whosTurn) {
-				moves = generateMove(pos);
-				for (auto move : moves) {
-					moveToUnmake = move;
-					unmakeEnPassant = enPassant;
-					unmakeCanCastle = canCastle;
-					unmakeTakenPiece = square[move[1]];
-					//cout << "negamxing move " << move[0] << " " << move[1] << " " << move[2] << "\n";
-					makeMove(move);
-					value = max(alpha, -negaMax(depth - 1, -beta, -alpha));
-					unmakeMove(moveToUnmake, unmakeEnPassant, unmakeCanCastle, unmakeTakenPiece);
-					alpha = max(alpha, value);
-					if (alpha >= beta) {
-						//cout << "Pruning";
-						break;
-					}
-				}
+			unmakeMove(moveToUnmake, unmakeEnPassant, unmakeCanCastle, unmakeTakenPiece);
+			alpha = max(alpha, value);
+			if (alpha >= beta) {
+				//cout << "Pruning";
+				break;
 			}
 		}
+
 		return value;
 	}
 }
@@ -895,10 +959,13 @@ double Board::threadedSearch(array<int, 3> move) {
 	char unmakeTakenPiece = square[move[1]];
 	//cout << "Making move " << move[0] << " " << move[1] << " " << move[2] << "\n";
 	makeMove(move);
-	double value = -negaMax(3, -10000000000, 10000000000);
+	double value = -negaMax(5, -10000000000, 10000000000);
 	//unmakeMove(moveToUnmake, unmakeEnPassant, unmakeCanCastle, unmakeTakenPiece);
 	return value;
 }
+
+
+/*
 mutex moveMutex;
 void Board::makeBotMove() {
 	vector<thread> threads;
@@ -948,7 +1015,7 @@ void Board::makeBotMove() {
 	}
 }
 
-/*
+
 void Board::makeBotMove() {
 	vector <array<int, 3>> bestMoves;
 	vector <array<int, 3>> threadMoves;
@@ -1005,7 +1072,7 @@ void Board::makeBotMove() {
 }
 */
 
-/*
+
 void Board::makeBotMove() {
 	vector <Board> threadedBoards;
 	vector <thread> threads;
@@ -1017,39 +1084,33 @@ void Board::makeBotMove() {
 	array<int, 3> bestMove = { -1, -1, -1 };
 	double value = -10000000000;
 	double bestValue = value;
-	for(int pos = 0; pos < 64; pos++) {
-		if (square[pos] == ' ') {
-			continue;
-		}
-		if ((square[pos] < 97 ? 1 : 0) == whosTurn) {
-			moves = generateMove(pos);
-		}
-		
-		for (auto move : moves) {
-			moveToUnmake = move;
-			unmakeEnPassant = enPassant;
-			unmakeCanCastle = canCastle;
-			unmakeTakenPiece = square[move[1]];
-			//cout << "Making move " << move[0] << " " << move[1] << " " << move[2] << "\n";
-			makeMove(move);
-			value = negaMax(4, -10000000000, 10000000000);
-			//cout << "Value: " << value << "\n";
-			unmakeMove(moveToUnmake, unmakeEnPassant, unmakeCanCastle, unmakeTakenPiece);
-			if (value > bestValue) {
-				bestValue = value;
-				bestMove = move;
-				cout << "Best move is " << move[0] << " " << move[1] << move[2] << "\n";
-			}
+	generateMoves();
+	moves = this->moves;
+	for(auto move : moves) {
+
+		moveToUnmake = move;
+		unmakeEnPassant = enPassant;
+		unmakeCanCastle = canCastle;
+		unmakeTakenPiece = square[move[1]];
+
+		makeMove(move);
+		value = -negaMax(5, -10000000000, 10000000000);
+
+		unmakeMove(moveToUnmake, unmakeEnPassant, unmakeCanCastle, unmakeTakenPiece);
+		if (value > bestValue) {
+			bestValue = value;
+			bestMove = move;
+			cout << "Best move is " << posToCoords(move[0]) << " to " << posToCoords(move[1]) << " type " << move[2] << "\n";
 		}
 	}
 	if (value != -10000000000) {
-		cout << "Making move " << bestMove[0] << " " << bestMove[1] << " " << bestMove[2] << "\n";;
+		cout << "Making move " << bestMove[0] << " " << bestMove[1] << " " << bestMove[2] << "\n";
 		makeMove(bestMove);
 	} else {
 		cout << "Cannot make move";
 	}
 }
-*/
+
 
 string Board::posToCoords(int pos) {
 	int x = (pos % 8)+1;
