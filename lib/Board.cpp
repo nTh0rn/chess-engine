@@ -368,6 +368,95 @@ bool Board::inCheck(int pos, int turn) {
 	return false;
 }
 
+void Board::generatePins() {
+
+	int dir;
+	int amt;
+	int prevPos;
+	int turn = whosTurn;
+	int pos = kingPos[whosTurn];
+	array<char, 6> enemyPieces = { (turn == 1 ? 'r' : 'R'), (turn == 1 ? 'b' : 'B'), (turn == 1 ? 'q' : 'Q'), (turn == 1 ? 'n' : 'N') , (turn == 1 ? 'k' : 'K') , (turn == 1 ? 'p' : 'P')};
+	int pinnedPos = -1;
+	bool enPassantPin = false;
+	
+	for (int pos = 0; pos < 64; pos++) {
+		squarePinned[pos] = { false, false, false, false };
+	}
+	
+	amt = 1;
+	dir = -1;
+	for (int i = 0; i < 2; i++) {
+		while (int((pos + (dir * amt)) / 8) == int(pos / 8)) {
+			if (square[pos + (dir * amt)] == ' ') { //Empty space
+				amt += 1;
+				cout << "Empty space\n";
+			} else if (pinnedPos != -1 && square[pos + (dir * amt)] == enemyPieces[0] || square[pos + (dir * amt)] == enemyPieces[2]) { //Enemy piece
+				cout << "Rook/queen hit " << square[pos + (dir * amt)] << "\n";
+				if (!enPassantPin) {
+					cout << "Non en passant\n";
+					squarePinned[pinnedPos] = { false, true, true, true};
+					break;
+				} else {
+					cout << "En passant\n";
+					if (whosTurn == 1) {
+						squarePinned[pinnedPos][(dir == 1) ? 3 : 2] = true;
+					} else {
+						squarePinned[pinnedPos][(dir == 1) ? 2 : 3] = true;
+					}
+					break;
+				}
+			} else {
+				cout << "Non-rook queen hit " << square[pos + (dir * amt)] << "\n";
+				if (pinnedPos == -1 && (square[pos + (dir * amt)] < 97 ? 1 : 0 == whosTurn)) { // Own piece
+					cout << "Own piece hit\n";
+					pinnedPos = pos + (dir * amt);
+					amt += 1;
+					continue;
+				} else if(pinnedPos != -1 && !enPassantPin && square[pos + (dir * amt)] == enemyPieces[5] && enPassant == pinnedPos+(dir+(8*((whosTurn == 0) ? 1 : -1)))) { // Rare en passant edge case
+					if (tolower(square[pinnedPos]) == 'p') {
+						cout << "En passant true\n";
+						enPassantPin = true;
+						amt += 1;
+					} else {
+						break;
+					}
+				} else {
+					cout << "Escape\n";
+					break;
+				}
+			}
+		}
+		//Right-side horizontal moves
+		amt = 1;
+		dir = 1;
+		pinnedPos = -1;
+		enPassantPin = false;
+	}
+	//Upper vertical moves
+	amt = 1;
+	dir = -8;
+	for (int i = 0; i < 2; i++) {
+		while (pos + (dir * amt) >= 0 && pos + (dir * amt) < 64) {
+			if (square[pos + (dir * amt)] == ' ') { //Empty space
+				amt += 1;
+			} else if (pinnedPos != -1 && square[pos + (dir * amt)] == enemyPieces[0] || square[pos + (dir * amt)] == enemyPieces[2]) {//Enemy piece
+				squarePinned[pinnedPos][1] = true;
+				break;
+			} else if(pinnedPos == -1 && (square[pos + (dir * amt)] < 97 ? 1 : 0 == whosTurn)) { //Own piece
+				pinnedPos = pos + (dir * amt);
+				amt += 1;
+			} else {
+				break;
+			}
+		}
+		//Lower vertical moves
+		amt = 1;
+		dir = 8;
+		pinnedPos = -1;
+		enPassantPin = false;
+	}
+}
+
 int Board::sortMovesPartition(vector <int>& moveValues, int low, int high) {
 	int pivot = moveValues[high];
 	int i = low - 1;
@@ -427,6 +516,7 @@ void Board::generateMoveValues() {
 //Generate all possible moves for whoever's turn it is
 void Board::generateMoves() {
 	moves.clear();
+	generatePins();
 	vector<array<int, 3>> pieceMoves;
 	for (int pos = 63; pos >= 0; pos--) {
 
@@ -471,7 +561,7 @@ void Board::generateMoves() {
 vector<array<int,3>> Board::generateMove(int pos) {
 	vector<array<int, 3>> movess = {};
 	vector<array<int, 3>> pieceMoves;
-
+	generatePins();
 	//Ensure only moves for whoever's turn it is get calculated
 	if (((square[pos] < 97) ? 1 : 0) != whosTurn || square[pos] == ' ') {
 		return {};
@@ -515,28 +605,23 @@ vector<array<int, 3>> Board::generatePawnMoves(int pos) {
 	int dir = (whosTurn == 0 ? 1 : -1);
 
 	//Move forward
-	if (pos + (8 * dir) < 64 && pos + (8 * dir) >= 0) {
+	if (pos + (8 * dir) < 64 && pos + (8 * dir) >= 0 && squarePinned[pos][0] == false) {
 		if (square[pos + (8 * dir)] == ' ') {
 			//Check whether is normal move or promotion
 			if (int((pos + (8 * dir)) / 8) == ((whosTurn == 0) ? 7 : 0)) {
-				if (kingSafe({ pos, pos + (8 * dir), 6 })) {
-					moves.push_back({ pos, pos + (8 * dir), 6 });
-					moves.push_back({ pos, pos + (8 * dir), 7 });
-					moves.push_back({ pos, pos + (8 * dir), 8 });
-					moves.push_back({ pos, pos + (8 * dir), 9 });
-				}
+				moves.push_back({ pos, pos + (8 * dir), 6 });
+				moves.push_back({ pos, pos + (8 * dir), 7 });
+				moves.push_back({ pos, pos + (8 * dir), 8 });
+				moves.push_back({ pos, pos + (8 * dir), 9 });
 			} else {
 				
-				if (kingSafe({ pos, pos + (8 * dir), 0 })) {
-					moves.push_back({ pos, pos + (8 * dir), 0 });
-				}
+				moves.push_back({ pos, pos + (8 * dir), 0 });
+				
 				//Double jump forward
 				if (pos + (16 * dir) < 64 && pos + (16 * dir) >= 0 && int(pos / 8) == ((whosTurn == 0) ? 1 : 6)) {
 					if (square[pos + (16 * dir)] == ' ') {
 						//Flag is 2 for en-passantable move
-						if (kingSafe({ pos, pos + (16 * dir), 2 })) {
-							moves.push_back({ pos, pos + (16 * dir), 2 });
-						}
+						moves.push_back({ pos, pos + (16 * dir), 2 });
 					}
 				}
 			}
@@ -547,26 +632,20 @@ vector<array<int, 3>> Board::generatePawnMoves(int pos) {
 	int cap = pos + (8 * dir) - 1;
 	for (int i = 0; i < 2; i++) {
 		//Check bounds
-		if (cap < 64 && cap >= 0 && abs((cap % 8) - (pos % 8)) == 1) {
+		if (cap < 64 && cap >= 0 && abs((cap % 8) - (pos % 8)) == 1 && squarePinned[pos][(cap == pos + (8 * dir) - 1) ? ((dir==1) ? 3 : 2) : ((dir==1) ? 2 : 3)] == false) {
 			//Check for en-passant
 			if (square[cap] != ' ' && (square[cap] < 97 ? 1 : 0) != whosTurn) {
 				//Check for promotion
 				if (int(cap / 8) != ((whosTurn == 0) ? 7 : 0)) {
-					if (kingSafe({pos, cap, 1})) {
-						moves.push_back({ pos, cap, 1 });
-					}
+					moves.push_back({ pos, cap, 1 });
 				} else {
-					if (kingSafe({ pos, cap, 6 })) {
-						moves.push_back({ pos, cap, 6 });
-						moves.push_back({ pos, cap, 7 });
-						moves.push_back({ pos, cap, 8 });
-						moves.push_back({ pos, cap, 9 });
-					}
+					moves.push_back({ pos, cap, 6 });
+					moves.push_back({ pos, cap, 7 });
+					moves.push_back({ pos, cap, 8 });
+					moves.push_back({ pos, cap, 9 });
 				}
 			} else if(enPassant == cap) {
-				if (kingSafe({ pos, cap, 3 })) {
-					moves.push_back({ pos, cap, 3 });
-				}
+				moves.push_back({ pos, cap, 3 });
 			}
 		}
 		//Update to capture to the right
@@ -586,50 +665,46 @@ vector<array<int, 3>> Board::generateSlidingMoves(int pos, int type) {
 	//Horizontal/vertical sliding moves
 	case 0:
 		//Left-side horizontal moves
-		amt = 1;
-		dir = -1;
-		for (int i = 0; i < 2; i++) {
-			while (int((pos + (dir*amt)) / 8) == int(pos / 8) && pos+(dir*amt) >= 0 && pos+(dir*amt) < 64) {
-				if (square[pos + (dir*amt)] == ' ') { //Empty space
-					if (kingSafe({ pos, pos + (dir * amt), 0 })) {
-						moves.push_back({ pos, pos + (dir * amt), 0 });
-					}
-					amt += 1;
-				} else if ((square[pos+(dir*amt)] < 97 ? 1 : 0) != whosTurn) { //Enemy piece
-					if (kingSafe({ pos, pos + (dir * amt), 1 })) {
-						moves.push_back({ pos, pos + (dir * amt), 1 });
-					}
-					break;
-				} else { //Own piece
-					break;
-				}
-			}
-			//Right-side horizontal moves
+		if (!squarePinned[pos][0]) {
 			amt = 1;
-			dir = 1;
+			dir = -1;
+			for (int i = 0; i < 2; i++) {
+				while (int((pos + (dir*amt)) / 8) == int(pos / 8) && pos+(dir*amt) >= 0 && pos+(dir*amt) < 64) {
+					if (square[pos + (dir*amt)] == ' ') { //Empty space
+						moves.push_back({ pos, pos + (dir * amt), 0 });
+						amt += 1;
+					} else if ((square[pos+(dir*amt)] < 97 ? 1 : 0) != whosTurn) { //Enemy piece
+						moves.push_back({ pos, pos + (dir * amt), 1 });
+						break;
+					} else { //Own piece
+						break;
+					}
+				}
+				//Right-side horizontal moves
+				amt = 1;
+				dir = 1;
+			}
 		}
 		//Upper vertical moves
-		amt = 1;
-		dir = -8;
-		for (int i = 0; i < 2; i++) {
-			while (pos + (dir*amt) >= 0 && pos + (dir*amt) < 64) {
-				if (square[pos + (dir*amt)] == ' ') { //Empty space
-					if (kingSafe({ pos, pos + (dir * amt), 0 })) {
-						moves.push_back({ pos, pos + (dir * amt), 0 });
-					}
-					amt += 1;
-				} else if ((square[pos+(dir*amt)] < 97 ? 1 : 0) != whosTurn) { //Enemy piece
-					if (kingSafe({ pos, pos + (dir * amt), 1 })) {
-						moves.push_back({ pos, pos + (dir * amt), 1 });
-					}
-					break;
-				} else { //Own piece
-					break;
-				}
-			}
-			//Lower vertical moves
+		if (!squarePinned[pos][1]) {
 			amt = 1;
-			dir = 8;
+			dir = -8;
+			for (int i = 0; i < 2; i++) {
+				while (pos + (dir * amt) >= 0 && pos + (dir * amt) < 64) {
+					if (square[pos + (dir * amt)] == ' ') { //Empty space
+						moves.push_back({ pos, pos + (dir * amt), 0 });
+						amt += 1;
+					} else if ((square[pos + (dir * amt)] < 97 ? 1 : 0) != whosTurn) { //Enemy piece
+						moves.push_back({ pos, pos + (dir * amt), 1 });
+						break;
+					} else { //Own piece
+						break;
+					}
+				}
+				//Lower vertical moves
+				amt = 1;
+				dir = 8;
+			}
 		}
 		break;
 	//Diagonal sliding moves
@@ -639,27 +714,25 @@ vector<array<int, 3>> Board::generateSlidingMoves(int pos, int type) {
 		prevPos = pos;
 		for (int i = 0; i < 2; i++) {
 			//Upper diagonal moves
-			for (int j = 0; j < 2; j++) {
-				while (pos + (dir * amt) >= 0 && pos + (dir * amt) < 64 && abs(((pos+(dir*amt)) % 8) - (prevPos % 8)) == 1) {
-					if (square[pos + (dir*amt)] == ' ') { //Empty space
-						if (kingSafe({ pos, pos + (dir * amt), 0 })) {
+			if (!squarePinned[pos][((abs(dir) == 9) ? 2 : 3)]) {
+				for (int j = 0; j < 2; j++) {
+					while (pos + (dir * amt) >= 0 && pos + (dir * amt) < 64 && abs(((pos + (dir * amt)) % 8) - (prevPos % 8)) == 1) {
+						if (square[pos + (dir * amt)] == ' ') { //Empty space
 							moves.push_back({ pos, pos + (dir * amt), 0 });
-						}
-						prevPos = pos + (dir * amt);
-						amt += 1;
-					} else if ((square[pos+(dir*amt)] < 97 ? 1 : 0) != whosTurn) { //Enemy piece
-						if (kingSafe({ pos, pos + (dir * amt), 1 })) {
+							prevPos = pos + (dir * amt);
+							amt += 1;
+						} else if ((square[pos + (dir * amt)] < 97 ? 1 : 0) != whosTurn) { //Enemy piece
 							moves.push_back({ pos, pos + (dir * amt), 1 });
+							break;
+						} else { //Own piece
+							break;
 						}
-						break;
-					} else { //Own piece
-						break;
 					}
+					//Lower diagonal moves
+					amt = 1;
+					dir = (dir == -9) ? 9 : 7;
+					prevPos = pos;
 				}
-				//Lower diagonal moves
-				amt = 1;
-				dir = (dir == -9) ? 9 : 7;
-				prevPos = pos;
 			}
 			//Swap diagonal
 			amt = 1;
@@ -673,18 +746,23 @@ vector<array<int, 3>> Board::generateSlidingMoves(int pos, int type) {
 
 //Generates legal moves from a given list of positions.
 vector<array<int, 3>> Board::generatePositionalMoves(int pos, array<int, 8> area, bool king) {
+
+	//Ensure piece isn't pinned at all.
+	for (bool pinned : squarePinned[pos]) {
+		if (pinned) {
+			return {};
+		}
+	}
+
 	vector <array<int, 3>> moves;
+
 	for (int to : area) {
 		//Check bounds
 		if (pos + to >= 0 && pos + to < 64 && abs(((pos + to) % 8) - (pos % 8)) <= 2) {
 			if (square[pos + to] == ' ') {
-				if (kingSafe({ pos, pos + to, 0 })) {
-					moves.push_back({ pos, pos + to, 0 });
-				}
+				moves.push_back({ pos, pos + to, 0 });
 			} else if ((square[pos + to] < 97 ? 1 : 0) != whosTurn) {
-				if (kingSafe({ pos, pos + to, 1 })) {
-					moves.push_back({ pos, pos + to, 1 });
-				}
+				moves.push_back({ pos, pos + to, 1 });
 			}
 		}
 	}
@@ -692,14 +770,19 @@ vector<array<int, 3>> Board::generatePositionalMoves(int pos, array<int, 8> area
 	//King-specific castling rights
 	if (king) {
 		if (canCastle[(whosTurn == 1 ? 0 : 2)]) {
-			if (square[kingPos[whosTurn] + 1] == ' ' && square[kingPos[whosTurn] + 2] == ' ' && square[kingPos[whosTurn] + 3] == (whosTurn == 1 ? 'R' : 'r')) {
+			if (square[kingPos[whosTurn] + 1] == ' ' &&
+				square[kingPos[whosTurn] + 2] == ' ' &&
+				square[kingPos[whosTurn] + 3] == (whosTurn == 1 ? 'R' : 'r')) {
 				if (kingSafe({pos, pos, 0}) && kingSafe({pos, pos+1, 0}) && kingSafe({pos, pos+2, 0})) {
 					moves.push_back({ pos, pos + 2, 5 });
 				}
 			}
 		}
 		if (canCastle[(whosTurn == 1 ? 1 : 3)]) {
-			if (square[kingPos[whosTurn] - 1] == ' ' && square[kingPos[whosTurn] - 2] == ' ' && square[kingPos[whosTurn] - 3] == ' ' && square[kingPos[whosTurn] - 4] == (whosTurn == 1 ? 'R' : 'r')) {
+			if (square[kingPos[whosTurn] - 1] == ' ' &&
+				square[kingPos[whosTurn] - 2] == ' ' &&
+				square[kingPos[whosTurn] - 3] == ' ' &&
+				square[kingPos[whosTurn] - 4] == (whosTurn == 1 ? 'R' : 'r')) {
 				if (kingSafe({pos, pos, 0}) && kingSafe({pos, pos-1, 0}) && kingSafe({pos, pos-2, 0}) ) {
 					moves.push_back({ pos, pos - 2, 4 });
 				}
@@ -927,24 +1010,27 @@ double Board::negaMax(int depth, double alpha, double beta, bool taking) {
 		//	return (f1[2] > f2[2] || (f1[2] == 2 && f2[2] != 2));
 		//	});
 		moves = this->moves;
-
-		for (auto move : moves) {
-			moveToUnmake = move;
-			unmakeEnPassant = enPassant;
-			unmakeCanCastle = canCastle;
-			unmakeTakenPiece = square[move[1]];
-			makeMove(move);
-			if (move[2] == 1 || move[2] == 3) {
-				value = max(value, -negaMax(depth - 1, -beta, -alpha, true));
-			} else {
-				value = max(value, -negaMax(depth - 1, -beta, -alpha));
+		if (moves.size() > 0) {
+			for (auto move : moves) {
+				moveToUnmake = move;
+				unmakeEnPassant = enPassant;
+				unmakeCanCastle = canCastle;
+				unmakeTakenPiece = square[move[1]];
+				makeMove(move);
+				if (move[2] == 1 || move[2] == 3) {
+					value = max(value, -negaMax(depth - 1, -beta, -alpha, true));
+				} else {
+					value = max(value, -negaMax(depth - 1, -beta, -alpha));
+				}
+				unmakeMove(moveToUnmake, unmakeEnPassant, unmakeCanCastle, unmakeTakenPiece);
+				alpha = max(alpha, value);
+				if (alpha >= beta) {
+					//cout << "Pruning";
+					break;
+				}
 			}
-			unmakeMove(moveToUnmake, unmakeEnPassant, unmakeCanCastle, unmakeTakenPiece);
-			alpha = max(alpha, value);
-			if (alpha >= beta) {
-				//cout << "Pruning";
-				break;
-			}
+		} else {
+			return 10000 * (whosTurn == 1 ? -1 : 1);
 		}
 
 		return value;
@@ -1086,7 +1172,7 @@ void Board::makeBotMove() {
 	double bestValue = value;
 	generateMoves();
 	moves = this->moves;
-	for(auto move : moves) {
+	for (auto move : moves) {
 
 		moveToUnmake = move;
 		unmakeEnPassant = enPassant;
@@ -1094,7 +1180,7 @@ void Board::makeBotMove() {
 		unmakeTakenPiece = square[move[1]];
 
 		makeMove(move);
-		value = -negaMax(5, -10000000000, 10000000000);
+		value = -negaMax(1, -10000000000, 10000000000);
 
 		unmakeMove(moveToUnmake, unmakeEnPassant, unmakeCanCastle, unmakeTakenPiece);
 		if (value > bestValue) {
@@ -1103,6 +1189,7 @@ void Board::makeBotMove() {
 			cout << "Best move is " << posToCoords(move[0]) << " to " << posToCoords(move[1]) << " type " << move[2] << "\n";
 		}
 	}
+	
 	if (value != -10000000000) {
 		cout << "Making move " << bestMove[0] << " " << bestMove[1] << " " << bestMove[2] << "\n";
 		makeMove(bestMove);

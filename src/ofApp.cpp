@@ -2,11 +2,12 @@
 
 //--------------------------------------------------------------
 void ofApp::setup(){
-	board = Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+	//board = Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+	
 	//board = Board("rnb1kbnr/pppp1ppp/4p3/8/6q1/2N2PP1/PPPPP2P/R1BQKBNR b KQkq - 1 4");
 	//board = Board("8/PPPPPPPP/8/4k3/1K6/8/pppppppp/8 w - - 0 1");
 
-	//board = Board("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ");
+	board = Board("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ");
 	cout << board.genFen();
 	
 	bP.load("images/bP.png");
@@ -197,13 +198,13 @@ void ofApp::makeMove(int from, int to, int flag) {
 		if (flag == -1) {
 			if (move[1] == to) {
 				board.makeMove(move);
-				board.makeBotMove();
+				//board.makeBotMove();
 				return;
 			}
 		} else {
 			if (move[0] == from && move[1] == to && move[2] == flag) {
 				board.makeMove(move);
-				board.makeBotMove();
+				//board.makeBotMove();
 				return;
 			}
 		}

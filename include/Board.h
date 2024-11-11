@@ -21,6 +21,7 @@ public:
 	array<bool, 4> canCastle = {false, false, false, false}; //K Q k q
 	int enPassant = { -1 };
 	char square[64] = { ' ' };
+	array <array<bool, 4>, 64> squarePinned = { false }; //Horizontal, vertical, \ diagonal, / diagonal
 	vector<array<int, 3>> moves; //from, to, flag (0=no capture, 1=capture, 2=en-passantable move, 3=en-passant, 4=q castle, 5=k castle, 6,7,8,9=q,r,b,n promotion)
 	vector <int> moveValues;
 
@@ -49,4 +50,5 @@ public:
 	void sortMoves(vector<int>& arr, int low, int high);
 	int sortMovesPartition(vector<int>& arr, int low, int high);
 	void generateMoveValues();
+	void generatePins();
 };
