@@ -37,7 +37,7 @@
     <ClCompile Include="..\..\..\addons\ofxGui\src\ofxToggle.cpp">
       <Filter>addons\ofxGui\src</Filter>
     </ClCompile>
-    <ClCompile Include="lib\Board.cpp">
+    <ClCompile Include="lib\Chess.cpp">
       <Filter>lib</Filter>
     </ClCompile>
   </ItemGroup>
@@ -101,7 +101,7 @@
     <ClInclude Include="..\..\..\addons\ofxGui\src\ofxToggle.h">
       <Filter>addons\ofxGui\src</Filter>
     </ClInclude>
-    <ClInclude Include="include\Board.h">
+    <ClInclude Include="include\Chess.h">
       <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>

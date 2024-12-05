@@ -1,7 +1,8 @@
 #pragma once
 
 #include "ofMain.h"
-#include "../include/Board.h"
+#include "../include/Chess.h"
+#include <chrono>
 
 class ofApp : public ofBaseApp{
 
@@ -10,18 +11,33 @@ class ofApp : public ofBaseApp{
 		void update();
 		void draw();
 		void drawBoard();
-		void updateVisualBoard();
+		void updateVisualChess();
 		void makeMove(int from, int to, int flag);
-
-		Board board;
-		array<ofImage, 64> visualBoard;
+		//void startBoard(string fen, array<int, 2> time);
+		int playerTurn;
+		Chess board;
+		Chess tempBoard;
+		array<ofImage, 64> visualChess;
 		ofImage bP, bR, bN, bB, bQ, bK, wP, wR, wN, wB, wQ, wK, emptySquare;
 		bool pieceHeld;
 		int pieceHeldPos;
 		ofImage pieceHeldImage;
+		ofImage preMoveImage;
 		bool promoting = false;
 		int promotePos;
-
+		mutex mtx;
+		bool botThinking;
+		array<int, 3> preMove = { -1, -1, -1 };
+		double whiteTime;
+		double blackTime;
+		ofTrueTypeFont myfont;
+		bool gameover = false;
+		bool botMoved = false;
+		bool gameStarted = false;
+		int timeSec = 3 * 60;
+		int timeWait = timeSec / 60;
+		int timer = 0;
+		int increment = 0;
 
 		void keyPressed(int key);
 		void keyReleased(int key);
@@ -34,5 +50,11 @@ class ofApp : public ofBaseApp{
 		void windowResized(int w, int h);
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);
-		
+		thread threadedBoard;
+		thread timerThread;
+		thread clockThread;
+		void timerRun(Chess* b);
+		void clockRun();
+		void drawClock();
+		void makeBotMove();
 };
