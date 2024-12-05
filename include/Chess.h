@@ -37,7 +37,7 @@ public:
 	bool timerDone = false;
 	int initialDepth = 5;
 	int depth = initialDepth;
-	int panicDepth = 3;
+	int panicDepth = 2;
 	bool gameover = false;
 	string thisGamesMoves;
 	vector<string> openingBookGames = {};

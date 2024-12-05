@@ -714,7 +714,7 @@ string Chess::openingBookMove() {
 	srand(time(0));
 	
 	if (openingBookGames.size() == 0) {
-		ifstream file("bin/UCI.txt");
+		ifstream file("UCI.txt");
 		string line;
 		if (file.is_open()) {
 			while (getline(file, line)) {
@@ -722,6 +722,8 @@ string Chess::openingBookMove() {
 				//cout << line << "\n";
 			}
 			file.close();
+		} else {
+			cout << "Error opening UCI.txt\n";
 		}
 	}
 	string::size_type start_pos = 0;
@@ -1067,6 +1069,7 @@ void Chess::makeBotMove(double alpha, double beta) {
 				if (move[0] == fromto[0] && move[1] == fromto[1]) {
 					thisGamesMoves += bookMove + " ";
 					makeMove(move);
+					cout << "\nOpening Book Move\n";
 					botMoved = true;
 					return;
 				}

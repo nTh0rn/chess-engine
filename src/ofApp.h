@@ -34,7 +34,7 @@ class ofApp : public ofBaseApp{
 		bool gameover = false;
 		bool botMoved = false;
 		bool gameStarted = false;
-		int timeSec = 3 * 60;
+		int timeSec = 30;
 		int timeWait = timeSec / 60;
 		int timer = 0;
 		int increment = 0;

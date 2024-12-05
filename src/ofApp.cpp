@@ -245,7 +245,7 @@ void ofApp::updateVisualChess() {
 }
 
 void ofApp::clockRun() {
-	whiteTime = timeSec;
+	whiteTime = timeSec+500;
 	blackTime = timeSec;
 	while (!gameover) {
 		//cout << "\n\n\n\nBlack Time: " << blackTime << "\nWhite Time: " << whiteTime << "\n";
