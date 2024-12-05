@@ -245,6 +245,18 @@ double Chess::evaluate() {
 		-10,  0,  5,  0,  0,  0,  0,-10,
 		-20,-10,-10, -5, -5,-10,-10,-20 };
 
+	if (!endgame) {
+		int counter = 0;
+		for (int pos = 0; pos < 64; pos++) {
+			if (square[pos] != 'p' && square[pos] != 'P' && square[pos] != ' ') {
+				counter++;
+			}
+		}
+		if (counter <= 7) {
+			endgame = true;
+		}
+	}
+
 	//Iterate and add values
 	for (int col = 0; col < 8; col++) {
 		for (int row = 0; row < 8; row++) {
@@ -264,7 +276,7 @@ double Chess::evaluate() {
 				output += -knight[blackPos]/weight + -3;
 				break;
 			case 'k':
-				output += -king[blackPos]/weight + -100000;
+				output += -(endgame ? king[whitePos] : king_eg[whitePos]) /weight + -100000;
 				break;
 			case 'q':
 				output += -queen[blackPos]/weight + -9;
@@ -282,7 +294,8 @@ double Chess::evaluate() {
 				output += knight[whitePos]/weight + 3;
 				break;
 			case 'K':
-				output += king[whitePos]/weight + 100000;
+				
+				output += (endgame ? king[whitePos] : king_eg[whitePos])/weight + 100000;
 				break;
 			case 'Q':
 				output += queen[whitePos]/weight + 9;
@@ -295,16 +308,11 @@ double Chess::evaluate() {
 
 //Whether the king of the current moving side is safe.
 bool Chess::kingSafe(array<int, 3> move) {
-	array<int, 3> moveToUnmake = move;
-	int unmakeEnPassant = enPassant;
-	array<bool, 4> unmakeCanCastle = canCastle;
-	char unmakeTakenPiece = square[move[1]];
+	moveToUnmake unmake = moveToUnmake(move, enPassant, canCastle, square[move[1]]);
 	bool output = false;
 	makeMove(move);
-	//cout << "Move: " << move[0] << " " << move[1] << " " << move[2] << "\n";
 	output = !inCheck(kingPos[1 - whosTurn], 1 - whosTurn);
-	
-	unmakeMove(moveToUnmake, unmakeEnPassant, unmakeCanCastle, unmakeTakenPiece);
+	unmakeMove(unmake);
 	return output;
 }
 
@@ -320,16 +328,11 @@ bool Chess::inCheck(int pos, int turn) {
 	dir = -1;
 	for (int i = 0; i < 2; i++) {
 		while (int((pos + (dir * amt)) / 8) == int(pos / 8) && pos + (dir * amt) >= 0 && pos + (dir * amt) < 64) {
-			//cout << "huh\n";
 			if (square[pos + (dir * amt)] == ' ') { //Empty space
-				//cout << "Huh2\n";
 				amt += 1;
 			} else if (square[pos + (dir * amt)] == enemyPieces[0] || square[pos + (dir * amt)] == enemyPieces[2]) { //Enemy piece
-				//cout << "Huh3\n";
 				return true;
 			} else { //Own piece
-				//cout << "Huh4\n";
-
 				break;
 			}
 		}
@@ -463,7 +466,7 @@ void Chess::generateMoves() {
 
 //Generate a single piece's possible moves
 vector<array<int,3>> Chess::generateMove(int pos) {
-	vector<array<int, 3>> movess = {};
+	vector<array<int, 3>> movess;
 	vector<array<int, 3>> pieceMoves;
 
 	//Ensure only moves for whoever's turn it is get calculated
@@ -504,7 +507,6 @@ vector<array<int,3>> Chess::generateMove(int pos) {
 vector<array<int, 3>> Chess::generatePawnMoves(int pos) {
 	vector<array<int, 3>> moves;
 	int dir = (whosTurn == 0 ? 1 : -1);
-
 	//Move forward
 	if (pos + (8 * dir) < 64 && pos + (8 * dir) >= 0) {
 		if (square[pos + (8 * dir)] == ' ') {
@@ -700,6 +702,7 @@ vector<array<int, 3>> Chess::generatePositionalMoves(int pos, array<int, 8> area
 	return moves;
 }
 
+//Used in openingBookMove() to get next move in book.
 void replace_first(
 	std::string& s,
 	std::string const& toReplace,
@@ -714,12 +717,11 @@ string Chess::openingBookMove() {
 	srand(time(0));
 	
 	if (openingBookGames.size() == 0) {
-		ifstream file("UCI.txt");
+		ifstream file("bin/UCI.txt");
 		string line;
 		if (file.is_open()) {
 			while (getline(file, line)) {
 				openingBookGames.push_back("GAME: " + line);
-				//cout << line << "\n";
 			}
 			file.close();
 		} else {
@@ -743,6 +745,7 @@ string Chess::openingBookMove() {
 	if (gamesFound.size() > 0) {
 		return gamesFoundFormatted[rand() % gamesFoundFormatted.size()].substr(0, 4);
 	} else {
+		cout << "Exiting opening book.\n";
 		outOfBook = true;
 		return "None";
 	}
@@ -849,12 +852,12 @@ void Chess::makeMove(array<int, 3> move) {
 }
 
 //Unmakes a move based on given parameters.
-void Chess::unmakeMove(array<int, 3> moveToUnmake, int unmakeEnPassant, array<bool, 4> unmakeCanCastle, char unmakeTakenPiece) {
-	canCastle = unmakeCanCastle;
-	enPassant = unmakeEnPassant;
-	int from = moveToUnmake[0];
-	int to = moveToUnmake[1];
-	int flag = moveToUnmake[2];
+void Chess::unmakeMove(moveToUnmake unmake) {
+	canCastle = unmake.canCastle;
+	enPassant = unmake.enPassant;
+	int from = unmake.move[0];
+	int to = unmake.move[1];
+	int flag = unmake.move[2];
 
 	if (tolower(square[to]) == 'k') {
 		kingPos[1 - whosTurn] = from;
@@ -868,7 +871,7 @@ void Chess::unmakeMove(array<int, 3> moveToUnmake, int unmakeEnPassant, array<bo
 		//Capturing move
 	case 1:
 		square[from] = square[to];
-		square[to] = unmakeTakenPiece;
+		square[to] = unmake.takenPiece;
 		break;
 		//En-passant
 	case 3:
@@ -885,13 +888,13 @@ void Chess::unmakeMove(array<int, 3> moveToUnmake, int unmakeEnPassant, array<bo
 		swap(square[to], square[from]);
 		swap(square[to + 1], square[from + 1]);
 		break;
-	//Promotins
+	//Promotions
 	case 6:
 	case 7:
 	case 8:
 	case 9:
 		square[from] = (square[to] < 97 ? 'P' : 'p');
-		square[to] = unmakeTakenPiece;
+		square[to] = unmake.takenPiece;
 		break;
 	}
 	plys -= 1;
@@ -907,25 +910,21 @@ int Chess::depthSearch(int depth, int displayAtDepth) {
 	int enPassants = 0;
 	int castles = 0;
 	int promotions = 0;
+	
 	vector<array<int, 3>> moves;
 	if (depth == 0) {
 		return 1;
 	} else {
-		array<int, 3> moveToUnmake = { -1, -1, -1 };
-		int unmakeEnPassant = -1;
-		array<bool, 4> unmakeCanCastle = canCastle;
-		char unmakeTakenPiece = ' ';
+		moveToUnmake unmake;
+		
 		generateMoves();
 		moves = this->moves;
 		for (auto move : moves) {
-			moveToUnmake = move;
-			unmakeEnPassant = enPassant;
-			unmakeCanCastle = canCastle;
-			unmakeTakenPiece = square[move[1]];
+			unmake = moveToUnmake(move, enPassant, canCastle, square[move[1]]);
 			makeMove(move);
 			showAmount = depthSearch(depth - 1);
 			output += showAmount;
-			unmakeMove(moveToUnmake, unmakeEnPassant, unmakeCanCastle, unmakeTakenPiece);
+			unmakeMove(unmake);
 			if (depth == displayAtDepth) {
 				cout << posToCoords(move[0]) << posToCoords(move[1]);
 				if (move[2] >= 6) {
@@ -956,31 +955,22 @@ double Chess::negaMax(int depth, double alpha, double beta, bool taking) {
 	//this_thread::sleep_for(std::chrono::milliseconds(10));
 	if (depth <= 0 && !taking) {
 		
-		if (generateMove(kingPos[whosTurn]).size() == 0) {
-			vector<array<int, 3>> moves;
-			int movesFound = 0;
-			for (int pos = 0; pos < 64; pos++) {
-				moves = generateMove(pos);
-
-				for (auto move : moves) {
-					movesFound++;
-				}
-			}
-			if (movesFound == 0) {
-				if (!inCheck(kingPos[whosTurn], whosTurn)) {
-					return 1000000000 * (whosTurn == 1 ? -1 : 1);
-				} else {
-					return 1000000000 * (whosTurn == 1 ? 1 : -1);
-				}
+		//Look for checkmate/stalemate
+		vector<array<int, 3>> moves;
+		int movesFound = 0;
+		for (int pos = 0; pos < 64; pos++) {
+			moves = generateMove(pos);
+			for (auto move : moves) {
+				movesFound++;
 			}
 		}
+		if (movesFound == 0) {
+			return 100000000 * (whosTurn == 1 ? 1 : -1);
+		}
 		
-		return evaluate()*(whosTurn == 1 ? 1 : -1);
+		return evaluate() * (whosTurn == 1 ? 1 : -1) * (!timerDone ? 1 : 0.7);
 	} else {
-		array<int, 3> moveToUnmake = { -1, -1, -1 };
-		int unmakeEnPassant = -1;
-		array<bool, 4> unmakeCanCastle = canCastle;
-		char unmakeTakenPiece = ' ';
+		moveToUnmake unmake;
 		vector<array<int, 3>> moves;
 		double value = -10000000000;
 		int movesFound = 0;
@@ -995,17 +985,14 @@ double Chess::negaMax(int depth, double alpha, double beta, bool taking) {
 					depth = panicDepth;
 				}
 				movesFound++;
-				moveToUnmake = move;
-				unmakeEnPassant = enPassant;
-				unmakeCanCastle = canCastle;
-				unmakeTakenPiece = square[move[1]];
+				unmake = moveToUnmake(move, enPassant, canCastle, square[move[1]]);
 				makeMove(move);
 				if (timerDone) {
 					value = max(value, -negaMax(depth - 1, -beta, -alpha, false));
 				} else {
-					value = max(value, -negaMax(depth - 1, -beta, -alpha, (unmakeTakenPiece != ' ')));
+					value = max(value, -negaMax(depth - 1, -beta, -alpha, (unmake.takenPiece != ' ')));
 				}
-				unmakeMove(moveToUnmake, unmakeEnPassant, unmakeCanCastle, unmakeTakenPiece);
+				unmakeMove(unmake);
 				alpha = max(alpha, value);
 				if (alpha >= beta) {
 					goto outerNegaMax;
@@ -1014,8 +1001,7 @@ double Chess::negaMax(int depth, double alpha, double beta, bool taking) {
 		}
 		outerNegaMax:
 		if (movesFound == 0) {
-			//cout << "Mate is sight";
-			return 1000000000 * (whosTurn == 1 ? 1 : -1);
+			return 100000000 * (whosTurn == 1 ? 1 : -1);
 		}
 
 		return value;
@@ -1060,6 +1046,7 @@ array<int, 2> Chess::coordsToPos(string coords) {
 //Makes a move for the bot
 void Chess::makeBotMove(double alpha, double beta) {
 	
+	//Check for book move
 	if (!outOfBook) {
 		string bookMove = openingBookMove();
 		if (bookMove != "None") {
@@ -1069,11 +1056,13 @@ void Chess::makeBotMove(double alpha, double beta) {
 				if (move[0] == fromto[0] && move[1] == fromto[1]) {
 					thisGamesMoves += bookMove + " ";
 					makeMove(move);
-					cout << "\nOpening Book Move\n";
+					cout << "Opening book move made.\n";
 					botMoved = true;
 					return;
 				}
 			}
+		} else {
+
 		}
 	}
 	
@@ -1081,10 +1070,7 @@ void Chess::makeBotMove(double alpha, double beta) {
 	botMoved = false;
 	vector <Chess> threadedChesss;
 	vector <thread> threads;
-	array<int, 3> moveToUnmake = { -1, -1, -1 };
-	int unmakeEnPassant = -1;
-	array<bool, 4> unmakeCanCastle = canCastle;
-	char unmakeTakenPiece = ' ';
+	moveToUnmake unmake;
 	vector<array<int, 3>> moves = {};
 	array<int, 3> bestMove = { -1, -1, -1 };
 	array<int, 3> nextBestMove = { -1, -1, -1 };
@@ -1100,18 +1086,14 @@ void Chess::makeBotMove(double alpha, double beta) {
 
 		for (auto move : moves) {
 			cout << "Looking at moves " << posToCoords(move[0]) << " to " << posToCoords(move[1]) << " type " << move[2] << "\n";
-			moveToUnmake = move;
-			unmakeEnPassant = enPassant;
-			unmakeCanCastle = canCastle;
-			unmakeTakenPiece = square[move[1]];
+			unmake = moveToUnmake(move, enPassant, canCastle, square[move[1]]);
 
 			makeMove(move);
 			
 			value = max(value, -negaMax(depth, -beta, -alpha, (move[2] == 1 || move[2] == 3)));
 			alpha = max(alpha, value);
-			unmakeMove(moveToUnmake, unmakeEnPassant, unmakeCanCastle, unmakeTakenPiece);
+			unmakeMove(unmake);
 			if (value > bestValue) {
-				cout << "Setting best move\n";
 				bestValue = value;
 				if (bestMove[0] == -1) {
 					bestMove = move;
@@ -1120,34 +1102,19 @@ void Chess::makeBotMove(double alpha, double beta) {
 					nextBestMove = bestMove;
 					bestMove = move;
 				}
-				
 				cout << "Best move is " << posToCoords(move[0]) << " to " << posToCoords(move[1]) << " type " << move[2] << "\n";
 			}
 		}
 	}
 	outer:
-	cout << "How the fuck, value: " << value << " init: " << init_value << "\n";
 	if (value != init_value && !gameover) {
 		cout << "Making move " << bestMove[0] << " " << bestMove[1] << " " << bestMove[2] << ", Value: " << value << "\n";
-		
-		/*
-		moveToUnmake = bestMove;
-		unmakeEnPassant = enPassant;
-		unmakeCanCastle = canCastle;
-		unmakeTakenPiece = square[bestMove[1]];
-		*/
-		
-		
-		
 		string moveUCI = posToCoords(bestMove[0]) + posToCoords(bestMove[1]);
-		cout << "\nMoveUCI: " << moveUCI << "\n";
 		int counter = 0;
 		for (auto move : previousMoves) {
 			if (moveUCI == move) {
-				cout << "Equal";
 				counter++;
 			}
-			cout << "\n" << move << " -- " << moveUCI << "\n";
 		}
 		previousMoves.insert(previousMoves.begin(), moveUCI);
 		if (previousMoves.size() > 10) {
@@ -1156,20 +1123,18 @@ void Chess::makeBotMove(double alpha, double beta) {
 		
 		thisGamesMoves += posToCoords(bestMove[0]) + posToCoords(bestMove[1]) + " ";
 		if (counter >= 3) {
-			cout << "Making next best move";
+			cout << "Repitition, making next best move.\n";
 			makeMove(nextBestMove);
 		} else {
 			makeMove(bestMove);
 		}
 		
 	} else {
-		cout << "Cannot make move";
+		cout << "Cannot make move\n";
 	}
 	botMoved = true;
 
 }
-
-
 
 //Shows the current state of the board in ascii.
 void Chess::show() {

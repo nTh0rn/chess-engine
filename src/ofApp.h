@@ -34,11 +34,13 @@ class ofApp : public ofBaseApp{
 		bool gameover = false;
 		bool botMoved = false;
 		bool gameStarted = false;
-		int timeSec = 30;
+		int timeSec = 10*60;
 		int timeWait = timeSec / 60;
 		int timer = 0;
 		int increment = 0;
-
+		double* botTime;
+		double* playerTime;
+		int botTurn = 0;
 		void keyPressed(int key);
 		void keyReleased(int key);
 		void mouseMoved(int x, int y );

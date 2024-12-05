@@ -15,6 +15,7 @@
 #include <fstream>
 #include <sstream>
 #include <direct.h>
+#include "moveToUnmake.h"
 
 using namespace std;
 
@@ -22,6 +23,7 @@ class Chess {
 public:
 	Chess();
 	Chess(string fen, array<int, 2> time = {-1, -1});
+	struct unmakeMove;
 	array<bool, 4> canCastle = {false, false, false, false}; //K Q k q
 	int enPassant = { -1 };
 	array<char, 64> square = { ' ' };
@@ -35,7 +37,7 @@ public:
 	bool botMoved = true;
 	bool timerHurry = false;
 	bool timerDone = false;
-	int initialDepth = 5;
+	int initialDepth = 6;
 	int depth = initialDepth;
 	int panicDepth = 2;
 	bool gameover = false;
@@ -44,6 +46,7 @@ public:
 	bool outOfBook = false;
 	vector<string> previousMoves;
 	array <int, 2> kingPos;
+	bool endgame = false;
 	void show();
 	string genFen();
 	string genFenRepitition();
@@ -58,7 +61,7 @@ public:
 	vector<array<int, 3>> generateSlidingMoves(int pos, int type);
 	vector<array<int, 3>> generatePositionalMoves(int pos, array<int, 8> area, bool king = false);
 	void makeMove(array<int, 3> move);
-	void unmakeMove(array<int, 3> moveToUnmake, int unmakeEnPassant, array<bool, 4> unmakeCanCastle, char unmakeTakenPiece);
+	void unmakeMove(moveToUnmake unmake);
 	int depthSearch(int depth, int displayAtDepth = -1);
 	double negaMax(int depth, double alpha, double beta, bool taking=false);
 	void makeBotMove(double alpha, double beta);
