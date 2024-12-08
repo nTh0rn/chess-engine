@@ -125,6 +125,9 @@ string Chess::genFen() {
 			skip = 0;
 		}
 	}
+
+	genSpiral();
+
 	fen += (whosTurn == 1) ? " w " : " b "; // Whos turn
 
 	//Castling rights
@@ -176,6 +179,32 @@ string Chess::genFenRepitition() {
 	if (canCastle[3]) { fen += "q"; }
 	
 	return fen;
+}
+
+//Generate the spiral coordinate array
+void Chess::genSpiral() {
+	int dx = 1, dy = 1, signx = -1, signy = -1;
+	int pos = 36;
+	int index = 0;
+	spiralCoords[index] = pos;
+	this_thread::sleep_for(std::chrono::milliseconds(1000));
+	while (pos != 7) {
+		for (int i = 0; i < dx; i++) {
+			pos += 1 * signx;
+			index++;
+			spiralCoords[index] = pos;
+			if (pos == 7) {
+				return;
+			}
+		}
+		for (int i = 0; i < dy; i++) {
+			pos += 1 * signy*8;
+			index++;
+			spiralCoords[index] = pos;
+		}
+		dx++, dy++;
+		signx*= -1, signy *= -1;
+	}
 }
 
 //Return the evaluation of the game from white's perspective
@@ -303,6 +332,12 @@ double Chess::evaluate() {
 			}
 		}
 	}
+
+	if (inCheck(kingPos[0], 0)) {
+		output += 1;
+	} else if (inCheck(kingPos[1], 1)) {
+		output += -1;
+	}
 	return output;
 }
 
@@ -424,7 +459,7 @@ bool Chess::inCheck(int pos, int turn) {
 }
 
 //Generate all possible moves for whoever's turn it is
-void Chess::generateMoves() {
+void Chess::genMoves() {
 	moves.clear();
 	vector<array<int, 3>> pieceMoves;
 	for (int pos = 63; pos >= 0; pos--) {
@@ -437,25 +472,25 @@ void Chess::generateMoves() {
 
 		switch (tolower(square[pos])) {
 		case 'p':
-			pieceMoves = generatePawnMoves(pos);
+			pieceMoves = genPawnMoves(pos);
 			break;
 		case 'r':
-			pieceMoves = generateSlidingMoves(pos, 0);
+			pieceMoves = genSlidingMoves(pos, 0);
 			break;
 		case 'b':
-			pieceMoves = generateSlidingMoves(pos, 1);
+			pieceMoves = genSlidingMoves(pos, 1);
 			break;
 		case 'n':
-			pieceMoves = generatePositionalMoves(pos, {-17, -15, -10, -6, 6, 10, 15, 17});
+			pieceMoves = genPositionalMoves(pos, {-17, -15, -10, -6, 6, 10, 15, 17});
 			break;
 		case 'q':
-			pieceMoves = generateSlidingMoves(pos, 0);
+			pieceMoves = genSlidingMoves(pos, 0);
 			moves.insert(moves.end(), pieceMoves.begin(), pieceMoves.end());
-			pieceMoves = generateSlidingMoves(pos, 1);
+			pieceMoves = genSlidingMoves(pos, 1);
 			break;
 		case 'k':
 			kingPos[whosTurn] = pos;
-			pieceMoves = generatePositionalMoves(pos, {-9, -8, -7, -1, 1, 7, 8, 9}, true);
+			pieceMoves = genPositionalMoves(pos, {-9, -8, -7, -1, 1, 7, 8, 9}, true);
 			break;
 		}
 		moves.insert(moves.end(), pieceMoves.begin(), pieceMoves.end());
@@ -465,7 +500,7 @@ void Chess::generateMoves() {
 
 
 //Generate a single piece's possible moves
-vector<array<int,3>> Chess::generateMove(int pos) {
+vector<array<int,3>> Chess::getPieceMoves(int pos) {
 	vector<array<int, 3>> movess;
 	vector<array<int, 3>> pieceMoves;
 
@@ -476,26 +511,26 @@ vector<array<int,3>> Chess::generateMove(int pos) {
 
 	switch (tolower(square[pos])) {
 	case 'p':
-		movess = generatePawnMoves(pos);
+		movess = genPawnMoves(pos);
 		break;
 	case 'r':
-		movess = generateSlidingMoves(pos, 0);
+		movess = genSlidingMoves(pos, 0);
 		break;
 	case 'b':
-		movess = generateSlidingMoves(pos, 1);
+		movess = genSlidingMoves(pos, 1);
 		break;
 	case 'n':
-		movess = generatePositionalMoves(pos, {-17, -15, -10, -6, 6, 10, 15, 17});
+		movess = genPositionalMoves(pos, {-17, -15, -10, -6, 6, 10, 15, 17});
 		break;
 	case 'q':
 		//Combine both types of sliding moves
-		movess = generateSlidingMoves(pos, 0);
-		pieceMoves = generateSlidingMoves(pos, 1);
+		movess = genSlidingMoves(pos, 0);
+		pieceMoves = genSlidingMoves(pos, 1);
 		movess.insert(movess.end(), pieceMoves.begin(), pieceMoves.end());
 		break;
 	case 'k':
 		kingPos[whosTurn] = pos;
-		movess = generatePositionalMoves(pos, {-9, -8, -7, -1, 1, 7, 8, 9}, true);
+		movess = genPositionalMoves(pos, {-9, -8, -7, -1, 1, 7, 8, 9}, true);
 		break;
 	}
 
@@ -504,7 +539,7 @@ vector<array<int,3>> Chess::generateMove(int pos) {
 }
 
 //Generates pawn moves
-vector<array<int, 3>> Chess::generatePawnMoves(int pos) {
+vector<array<int, 3>> Chess::genPawnMoves(int pos) {
 	vector<array<int, 3>> moves;
 	int dir = (whosTurn == 0 ? 1 : -1);
 	//Move forward
@@ -570,7 +605,7 @@ vector<array<int, 3>> Chess::generatePawnMoves(int pos) {
 }
 
 //Generates both types of sliding moves
-vector<array<int, 3>> Chess::generateSlidingMoves(int pos, int type) {
+vector<array<int, 3>> Chess::genSlidingMoves(int pos, int type) {
 	vector<array<int, 3>> moves;
 	int dir;
 	int amt;
@@ -665,7 +700,7 @@ vector<array<int, 3>> Chess::generateSlidingMoves(int pos, int type) {
 }
 
 //Generates legal moves from a given list of positions.
-vector<array<int, 3>> Chess::generatePositionalMoves(int pos, array<int, 8> area, bool king) {
+vector<array<int, 3>> Chess::genPositionalMoves(int pos, array<int, 8> area, bool king) {
 	vector <array<int, 3>> moves;
 	for (int to : area) {
 		//Check bounds
@@ -717,7 +752,7 @@ string Chess::openingBookMove() {
 	srand(time(0));
 	
 	if (openingBookGames.size() == 0) {
-		ifstream file("bin/UCI.txt");
+		ifstream file("bin/data/openingbooks/all.txt");
 		string line;
 		if (file.is_open()) {
 			while (getline(file, line)) {
@@ -725,6 +760,18 @@ string Chess::openingBookMove() {
 			}
 			file.close();
 		} else {
+			const size_t size = 1024;
+			// Allocate a character array to store the directory path
+			char buffer[size];
+
+			// Call _getcwd to get the current working directory and store it in buffer
+			if (getcwd(buffer, size) != NULL) {
+				// print the current working directory
+				cout << "Current working directory: " << buffer << endl;
+			} else {
+				// If _getcwd returns NULL, print an error message
+				cerr << "Error getting current working directory" << endl;
+			}
 			cout << "Error opening UCI.txt\n";
 		}
 	}
@@ -917,7 +964,7 @@ int Chess::depthSearch(int depth, int displayAtDepth) {
 	} else {
 		moveToUnmake unmake;
 		
-		generateMoves();
+		genMoves();
 		moves = this->moves;
 		for (auto move : moves) {
 			unmake = moveToUnmake(move, enPassant, canCastle, square[move[1]]);
@@ -952,31 +999,35 @@ int Chess::depthSearch(int depth, int displayAtDepth) {
 
 //Negated mini-max alpha-beta pruning
 double Chess::negaMax(int depth, double alpha, double beta, bool taking) {
-	//this_thread::sleep_for(std::chrono::milliseconds(10));
 	if (depth <= 0 && !taking) {
 		
 		//Look for checkmate/stalemate
 		vector<array<int, 3>> moves;
 		int movesFound = 0;
 		for (int pos = 0; pos < 64; pos++) {
-			moves = generateMove(pos);
+			moves = getPieceMoves(pos);
 			for (auto move : moves) {
 				movesFound++;
 			}
 		}
 		if (movesFound == 0) {
-			return 100000000 * (whosTurn == 1 ? 1 : -1);
+			if (!inCheck(kingPos[whosTurn], whosTurn)) {
+				return INT_MAX * (whosTurn == 1 ? 1 : -1) * initialDepth;
+			} else {
+				//cout << "Mate spotted1\n";
+				return INT_MAX * (whosTurn == 1 ? -1 : 1) * initialDepth;
+			}
 		}
-		
 		return evaluate() * (whosTurn == 1 ? 1 : -1) * (!timerDone ? 1 : 0.7);
 	} else {
 		moveToUnmake unmake;
 		vector<array<int, 3>> moves;
-		double value = -10000000000;
+		double value = -DBL_MAX;
 		int movesFound = 0;
 
-		for (int pos = 0; pos < 64; pos++) {
-			moves = generateMove(pos);
+		for (int i = 0; i < 64; i++) {
+			int pos = spiralCoords[i];
+			moves = getPieceMoves(pos);
 			for (auto move : moves) {
 				if (gameover) {
 					return 0;
@@ -999,11 +1050,16 @@ double Chess::negaMax(int depth, double alpha, double beta, bool taking) {
 				}
 			}
 		}
-		outerNegaMax:
+		
 		if (movesFound == 0) {
-			return 100000000 * (whosTurn == 1 ? 1 : -1);
+			if (!inCheck(kingPos[whosTurn], whosTurn)) {
+				return INT_MAX * (whosTurn == 1 ? 1 : -1) * (abs((initialDepth - depth)) != 0 ? abs((initialDepth - depth)) : 1);
+			} else {
+				//cout << "Mate spotted2\n";
+				return INT_MAX * (whosTurn == 1 ? -1 : 1) * (abs((initialDepth - depth)) != 0 ? abs((initialDepth - depth)) : 1);
+			}
 		}
-
+		outerNegaMax:
 		return value;
 	}
 }
@@ -1050,7 +1106,7 @@ void Chess::makeBotMove(double alpha, double beta) {
 	if (!outOfBook) {
 		string bookMove = openingBookMove();
 		if (bookMove != "None") {
-			generateMoves();
+			genMoves();
 			array<int, 2> fromto = coordsToPos(bookMove);
 			for (auto move : moves) {
 				if (move[0] == fromto[0] && move[1] == fromto[1]) {
@@ -1074,15 +1130,15 @@ void Chess::makeBotMove(double alpha, double beta) {
 	vector<array<int, 3>> moves = {};
 	array<int, 3> bestMove = { -1, -1, -1 };
 	array<int, 3> nextBestMove = { -1, -1, -1 };
-	double init_value = -10000000000;
+	double init_value = -DBL_MAX;
 	double value = init_value;
 	double bestValue = value;
 	
-	depth--;
+	depth--; //Decreases by one because at least one depth is always searched outside of negamax().
 
-	for (int pos = 63; pos >= 0; pos--) {
-
-		moves = generateMove(pos);
+	for (int i = 0; i < 64; i++) {
+		int pos = spiralCoords[i];
+		moves = getPieceMoves(pos);
 
 		for (auto move : moves) {
 			cout << "Looking at moves " << posToCoords(move[0]) << " to " << posToCoords(move[1]) << " type " << move[2] << "\n";
@@ -1122,7 +1178,7 @@ void Chess::makeBotMove(double alpha, double beta) {
 		}
 		
 		thisGamesMoves += posToCoords(bestMove[0]) + posToCoords(bestMove[1]) + " ";
-		if (counter >= 3) {
+		if (counter >= 2) {
 			cout << "Repitition, making next best move.\n";
 			makeMove(nextBestMove);
 		} else {

@@ -2,9 +2,10 @@
 
 //--------------------------------------------------------------
 void ofApp::setup(){
-	//board = Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-	board = Chess("7k/ppn2pp1/8/8/8/7q/1K6/5r2 w - - 0 1");
-	board.generateMoves();
+	board = Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+	//board = Chess("7k/ppn2pp1/8/8/8/7q/1K6/5r2 w - - 0 1");
+	//board = Chess("rn4k1/ppp2ppp/8/2r5/8/BP3N1P/P4PP1/4R1K1 w q - 0 1");
+	board.genMoves();
 	cout << board.genFen() << "\n";
 	botTurn = 0; // 0=black, 1=white
 
@@ -22,13 +23,14 @@ void ofApp::setup(){
 	wQ.load("images/wQ.png");
 	wK.load("images/wK.png");
 	emptySquare.load("images/Empty.png");
+	wK_inverted.load("images/wK_inverted.png");
 
-	myfont.load("arial.ttf", 32);
+	myfont.load("fonts/arial.ttf", 32);
 
 	botTime = (botTurn == 0 ? &blackTime : &whiteTime);
 	playerTime = (botTurn == 1 ? &blackTime : &whiteTime);
 
-	if (botTurn == 1) {
+	if (botTurn == board.whosTurn) {
 		gameStarted = true;
 		clockThread = thread(&ofApp::clockRun, this);
 		threadedBoard = thread(&ofApp::makeBotMove, this);
@@ -68,14 +70,14 @@ void ofApp::drawClock() {
 	ofSetColor(0);
 	myfont.drawString(wt, 650, 630);
 	ofSetColor(255);
-	bK.draw(695, 100, 150, 150);
+	wK_inverted.draw(695, 100, 150, 150);
 	ofSetColor(255);
 	wK.draw(695, 390, 150, 150);
 	ofSetColor(0, 100);
 	if (botThinking) {
-		ofDrawRectangle(640, 320, 260, 320);
+		ofDrawRectangle(640, 320*(1-botTurn), 260, 320);
 	} else {
-		ofDrawRectangle(640, 0, 260, 320);
+		ofDrawRectangle(640, 320*botTurn, 260, 320);
 	}
 }
 
@@ -139,7 +141,7 @@ void ofApp::drawBoard() {
 
 	//Draw legal moves for piece
 	} else if (pieceHeld) {
-		moves = tempBoard.generateMove(pieceHeldPos);
+		moves = tempBoard.getPieceMoves(pieceHeldPos);
 		for (array<int, 3> move : moves) {
 			if (tempBoard.square[move[1]] == ' ' && move[2] != 3) {
 				ofSetColor(255, 0, 0, 100);
@@ -295,7 +297,7 @@ void ofApp::makeBotMove() {
 	board.whosTurn = 1 - board.whosTurn; //Inverse turn so player can premove
 	botMoved = false;
 	timerThread = thread(&ofApp::timerRun, this, &botBoard);
-	botBoard.makeBotMove(-10000000000, 10000000000);
+	botBoard.makeBotMove(-DBL_MAX, DBL_MAX);
 	botMoved = true;
 	timerThread.join();
 	botBoard.timerHurry = false;
@@ -311,13 +313,13 @@ void ofApp::makeMove(int from, int to, int flag) {
 	if (gameover) {
 		return;
 	}
-	if (!gameStarted && botTurn == 0) {
+	if (!gameStarted && board.whosTurn != botTurn) {
 		gameStarted = true;
 		clockThread = thread(&ofApp::clockRun, this);
 	}
 	vector<array<int, 3>> moves;
 
-	moves = board.generateMove(from);
+	moves = board.getPieceMoves(from);
 
 	//Check whether move is legal or is premove
 	for (array<int, 3> move : moves) {
@@ -384,10 +386,10 @@ void ofApp::mouseDragged(int x, int y, int button){
 void ofApp::mousePressed(int x, int y, int button){
 	preMove = { -1, -1, -1 };
 	Chess tempBoard = board;
-	tempBoard.generateMoves();
+	tempBoard.genMoves();
 	int mPos = int(mouseY / 80) * 8 + int(mouseX / 80);
 	if (!promoting) {
-		if (pieceHeld == false && tempBoard.square[mPos] != ' ' && (tempBoard.square[mPos] < 97 ? 1 : 0) == tempBoard.whosTurn && tempBoard.generateMove(mPos).size() > 0) {
+		if (pieceHeld == false && tempBoard.square[mPos] != ' ' && (tempBoard.square[mPos] < 97 ? 1 : 0) == tempBoard.whosTurn && tempBoard.getPieceMoves(mPos).size() > 0) {
 			pieceHeld = true;
 			pieceHeldPos = mPos;
 			pieceHeldImage = visualChess[pieceHeldPos];

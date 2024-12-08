@@ -27,6 +27,7 @@ public:
 	array<bool, 4> canCastle = {false, false, false, false}; //K Q k q
 	int enPassant = { -1 };
 	array<char, 64> square = { ' ' };
+	array<int, 64> spiralCoords = { 0 };
 	vector<array<int, 3>> moves; //from, to, flag (0=no capture, 1=capture, 2=en-passantable move, 3=en-passant, 4=q castle, 5=k castle, 6,7,8,9=q,r,b,n promotion)
 	vector <int> moveValues;
 	bool gameStarted;
@@ -37,9 +38,9 @@ public:
 	bool botMoved = true;
 	bool timerHurry = false;
 	bool timerDone = false;
-	int initialDepth = 6;
+	int initialDepth = 5;
 	int depth = initialDepth;
-	int panicDepth = 2;
+	int panicDepth = 3;
 	bool gameover = false;
 	string thisGamesMoves;
 	vector<string> openingBookGames = {};
@@ -53,18 +54,18 @@ public:
 	double evaluate();
 	string posToCoords(int pos);
 	array<int, 2> coordsToPos(string coords);
-	void generateMoves();
-	vector<array<int, 3>> generateMove(int pos);
+	void genMoves();
+	vector<array<int, 3>> getPieceMoves(int pos);
 	bool kingSafe(array<int, 3> move);
 	bool inCheck(int pos, int turn);
-	vector<array<int, 3>> generatePawnMoves(int pos);
-	vector<array<int, 3>> generateSlidingMoves(int pos, int type);
-	vector<array<int, 3>> generatePositionalMoves(int pos, array<int, 8> area, bool king = false);
+	vector<array<int, 3>> genPawnMoves(int pos);
+	vector<array<int, 3>> genSlidingMoves(int pos, int type);
+	vector<array<int, 3>> genPositionalMoves(int pos, array<int, 8> area, bool king = false);
 	void makeMove(array<int, 3> move);
 	void unmakeMove(moveToUnmake unmake);
 	int depthSearch(int depth, int displayAtDepth = -1);
 	double negaMax(int depth, double alpha, double beta, bool taking=false);
 	void makeBotMove(double alpha, double beta);
+	void genSpiral();
 	string openingBookMove();
-
 };

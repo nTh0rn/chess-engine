@@ -18,7 +18,7 @@ class ofApp : public ofBaseApp{
 		Chess board;
 		Chess tempBoard;
 		array<ofImage, 64> visualChess;
-		ofImage bP, bR, bN, bB, bQ, bK, wP, wR, wN, wB, wQ, wK, emptySquare;
+		ofImage bP, bR, bN, bB, bQ, bK, wP, wR, wN, wB, wQ, wK, emptySquare, wK_inverted;
 		bool pieceHeld;
 		int pieceHeldPos;
 		ofImage pieceHeldImage;
@@ -34,7 +34,7 @@ class ofApp : public ofBaseApp{
 		bool gameover = false;
 		bool botMoved = false;
 		bool gameStarted = false;
-		int timeSec = 10*60;
+		int timeSec = 8*60;
 		int timeWait = timeSec / 60;
 		int timer = 0;
 		int increment = 0;
