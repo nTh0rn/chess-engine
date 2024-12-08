@@ -36,8 +36,7 @@ public:
 	int plys = 0;
 	int whosTurn = 0;
 	bool botMoved = true;
-	bool timerHurry = false;
-	bool timerDone = false;
+	int panicLevel = 0;
 	int initialDepth = 5;
 	int depth = initialDepth;
 	int panicDepth = 3;
@@ -48,6 +47,7 @@ public:
 	vector<string> previousMoves;
 	array <int, 2> kingPos;
 	bool endgame = false;
+	bool showDebugMessages = true;
 	void show();
 	string genFen();
 	string genFenRepitition();
@@ -68,4 +68,5 @@ public:
 	void makeBotMove(double alpha, double beta);
 	void genSpiral();
 	string openingBookMove();
+	void debugMessage(string input);
 };

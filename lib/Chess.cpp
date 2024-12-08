@@ -1,6 +1,13 @@
 #include "../include/Chess.h"
 using namespace std;
 
+//Prints debug messages
+void Chess::debugMessage(string input) {
+	if (showDebugMessages) {
+		cout << input << "\n";
+	}
+}
+
 //Default constructor
 Chess::Chess() {};
 
@@ -466,7 +473,6 @@ void Chess::genMoves() {
 
 		//Ensure only moves for whoever's turn it is get calculated
 		if (((square[pos] < 97) ? 1 : 0) != whosTurn || square[pos] == ' ') {
-			//cout << square[pos] << " - " << whosTurn << "\n";
 			continue;
 		}
 
@@ -750,29 +756,27 @@ void replace_first(
 
 string Chess::openingBookMove() {
 	srand(time(0));
-	
+	int tick = false;
 	if (openingBookGames.size() == 0) {
 		ifstream file("bin/data/openingbooks/all.txt");
 		string line;
+		retryOpeningBook:
 		if (file.is_open()) {
+			debugMessage("Opening book found.");
 			while (getline(file, line)) {
 				openingBookGames.push_back("GAME: " + line);
 			}
 			file.close();
 		} else {
-			const size_t size = 1024;
-			// Allocate a character array to store the directory path
-			char buffer[size];
-
-			// Call _getcwd to get the current working directory and store it in buffer
-			if (getcwd(buffer, size) != NULL) {
-				// print the current working directory
-				cout << "Current working directory: " << buffer << endl;
+			if (tick == false) {
+				debugMessage("Root directory is not immediately outside bin, checking for inside bin.");
+				file.open("data/openingbooks/all.txt");
+				tick = true;
+				goto retryOpeningBook;
 			} else {
-				// If _getcwd returns NULL, print an error message
-				cerr << "Error getting current working directory" << endl;
+				debugMessage("Error opening UCI.txt");
+				outOfBook = true;
 			}
-			cout << "Error opening UCI.txt\n";
 		}
 	}
 	string::size_type start_pos = 0;
@@ -792,7 +796,7 @@ string Chess::openingBookMove() {
 	if (gamesFound.size() > 0) {
 		return gamesFoundFormatted[rand() % gamesFoundFormatted.size()].substr(0, 4);
 	} else {
-		cout << "Exiting opening book.\n";
+		debugMessage("Exiting opening book.");
 		outOfBook = true;
 		return "None";
 	}
@@ -1014,11 +1018,10 @@ double Chess::negaMax(int depth, double alpha, double beta, bool taking) {
 			if (!inCheck(kingPos[whosTurn], whosTurn)) {
 				return INT_MAX * (whosTurn == 1 ? 1 : -1) * initialDepth;
 			} else {
-				//cout << "Mate spotted1\n";
 				return INT_MAX * (whosTurn == 1 ? -1 : 1) * initialDepth;
 			}
 		}
-		return evaluate() * (whosTurn == 1 ? 1 : -1) * (!timerDone ? 1 : 0.7);
+		return evaluate() * (whosTurn == 1 ? 1 : -1) * (panicLevel != 2 ? 1 : 0.7);
 	} else {
 		moveToUnmake unmake;
 		vector<array<int, 3>> moves;
@@ -1032,13 +1035,13 @@ double Chess::negaMax(int depth, double alpha, double beta, bool taking) {
 				if (gameover) {
 					return 0;
 				}
-				if (timerHurry && depth > panicDepth) {
+				if (panicLevel > 0 && depth > panicDepth) {
 					depth = panicDepth;
 				}
 				movesFound++;
 				unmake = moveToUnmake(move, enPassant, canCastle, square[move[1]]);
 				makeMove(move);
-				if (timerDone) {
+				if (panicLevel == 2) {
 					value = max(value, -negaMax(depth - 1, -beta, -alpha, false));
 				} else {
 					value = max(value, -negaMax(depth - 1, -beta, -alpha, (unmake.takenPiece != ' ')));
@@ -1055,7 +1058,6 @@ double Chess::negaMax(int depth, double alpha, double beta, bool taking) {
 			if (!inCheck(kingPos[whosTurn], whosTurn)) {
 				return INT_MAX * (whosTurn == 1 ? 1 : -1) * (abs((initialDepth - depth)) != 0 ? abs((initialDepth - depth)) : 1);
 			} else {
-				//cout << "Mate spotted2\n";
 				return INT_MAX * (whosTurn == 1 ? -1 : 1) * (abs((initialDepth - depth)) != 0 ? abs((initialDepth - depth)) : 1);
 			}
 		}
@@ -1112,7 +1114,7 @@ void Chess::makeBotMove(double alpha, double beta) {
 				if (move[0] == fromto[0] && move[1] == fromto[1]) {
 					thisGamesMoves += bookMove + " ";
 					makeMove(move);
-					cout << "Opening book move made.\n";
+					debugMessage("Opening book move made.");
 					botMoved = true;
 					return;
 				}
@@ -1141,7 +1143,7 @@ void Chess::makeBotMove(double alpha, double beta) {
 		moves = getPieceMoves(pos);
 
 		for (auto move : moves) {
-			cout << "Looking at moves " << posToCoords(move[0]) << " to " << posToCoords(move[1]) << " type " << move[2] << "\n";
+			debugMessage("Looking at move " + posToCoords(move[0]) + " to " + posToCoords(move[1]) + " type " + to_string(move[2]));
 			unmake = moveToUnmake(move, enPassant, canCastle, square[move[1]]);
 
 			makeMove(move);
@@ -1158,13 +1160,13 @@ void Chess::makeBotMove(double alpha, double beta) {
 					nextBestMove = bestMove;
 					bestMove = move;
 				}
-				cout << "Best move is " << posToCoords(move[0]) << " to " << posToCoords(move[1]) << " type " << move[2] << "\n";
+				debugMessage("Best move is " + posToCoords(move[0]) + " to " + posToCoords(move[1]) + " type " + to_string(move[2]));
 			}
 		}
 	}
 	outer:
 	if (value != init_value && !gameover) {
-		cout << "Making move " << bestMove[0] << " " << bestMove[1] << " " << bestMove[2] << ", Value: " << value << "\n";
+		debugMessage("Making move " + posToCoords(bestMove[0]) + " " + posToCoords(bestMove[1]) + " " + posToCoords(bestMove[2]) + ", Value: " + to_string(value));
 		string moveUCI = posToCoords(bestMove[0]) + posToCoords(bestMove[1]);
 		int counter = 0;
 		for (auto move : previousMoves) {
@@ -1179,14 +1181,14 @@ void Chess::makeBotMove(double alpha, double beta) {
 		
 		thisGamesMoves += posToCoords(bestMove[0]) + posToCoords(bestMove[1]) + " ";
 		if (counter >= 2) {
-			cout << "Repitition, making next best move.\n";
+			debugMessage("Repitition, making next best move.");
 			makeMove(nextBestMove);
 		} else {
 			makeMove(bestMove);
 		}
 		
 	} else {
-		cout << "Cannot make move\n";
+		debugMessage("Cannot make move.");
 	}
 	botMoved = true;
 

@@ -6,7 +6,7 @@ void ofApp::setup(){
 	//board = Chess("7k/ppn2pp1/8/8/8/7q/1K6/5r2 w - - 0 1");
 	//board = Chess("rn4k1/ppp2ppp/8/2r5/8/BP3N1P/P4PP1/4R1K1 w q - 0 1");
 	board.genMoves();
-	cout << board.genFen() << "\n";
+	board.debugMessage(board.genFen());
 	botTurn = 0; // 0=black, 1=white
 
 	//Initialize images
@@ -47,10 +47,10 @@ void ofApp::draw(){
 	drawBoard();
 	if (!botThinking && threadedBoard.joinable()) {
 		threadedBoard.join();
-		cout << "Bot moved. Eval: " << board.evaluate() << "\n\n";
+		board.debugMessage("Bot moved. Eval: " + to_string(board.evaluate()));
 		if (preMove[0] != -1) {
 			makeMove(preMove[0], preMove[1], preMove[2]);
-			cout << "Premove made.\n";
+			board.debugMessage("Premove executed.");
 			preMove = { -1, -1, -1 };
 		}
 	}
@@ -265,14 +265,14 @@ void ofApp::clockRun() {
 //Keep track of bot's panic modes.
 void ofApp::timerRun(Chess* b) {
 	int time = (*botTime/50 * 1000);
-	cout << "Panic level: 0\n";
+	b->debugMessage("Panic level: " + to_string(b->panicLevel));
 	while (time > 0 && !botMoved) {
 		this_thread::sleep_for(std::chrono::milliseconds(1));
 		time--;
 	}
 	if (!botMoved) {
-		cout << "Panic level: 1\n";
-		b->timerHurry = true;
+		b->panicLevel++;
+		b->debugMessage("Panic level: " + to_string(b->panicLevel));
 	}
 	
 	time = (*botTime / 50 * 350);
@@ -281,16 +281,16 @@ void ofApp::timerRun(Chess* b) {
 		time--;
 	}
 	if (!botMoved) {
-		cout << "Panic level: 2\n";
-		b->timerDone = true;
+		b->panicLevel++;
+		b->debugMessage("Panic level: " + to_string(b->panicLevel));
 	} else {
-		cout << "Exited panic.\n";
+		b->debugMessage("Exited at panic level " + to_string(b->panicLevel));
 	}
 }
 
 //Make the bot move.
 void ofApp::makeBotMove() {
-	cout << "\n\nAll moves made: " << board.thisGamesMoves << "\n\n";
+	board.debugMessage("All moves made: " + board.thisGamesMoves);
 	botThinking = true;
 	Chess botBoard;
 	botBoard = board;
@@ -300,8 +300,7 @@ void ofApp::makeBotMove() {
 	botBoard.makeBotMove(-DBL_MAX, DBL_MAX);
 	botMoved = true;
 	timerThread.join();
-	botBoard.timerHurry = false;
-	botBoard.timerDone = false;
+	botBoard.panicLevel = 0;
 	pieceHeld = false;
 	promoting = false;
 	board = botBoard;
@@ -328,12 +327,12 @@ void ofApp::makeMove(int from, int to, int flag) {
 		if (flag == -1) {
 			if (move[1] == to) {
 				if (!botThinking) {
-					cout << "Making move.\n";
+					board.debugMessage("Making user move.");
 					board.thisGamesMoves += board.posToCoords(move[0]) + board.posToCoords(move[1]) + " ";
 					board.makeMove(move);
 					threadedBoard = thread(&ofApp::makeBotMove, this);
 				} else {
-					cout << "Making premove.\n";
+					board.debugMessage("Making user premove.");
 					preMove = move;
 					preMoveImage = visualChess[move[0]];
 				}
@@ -345,12 +344,12 @@ void ofApp::makeMove(int from, int to, int flag) {
 		} else {
 			if (move[0] == from && move[1] == to && move[2] == flag) {
 				if (!botThinking) {
-					cout << "Making move.\n";
+					board.debugMessage("Making user move.");
 					board.thisGamesMoves += board.posToCoords(move[0]) + board.posToCoords(move[1]) + " ";
 					board.makeMove(move);
 					threadedBoard = thread(&ofApp::makeBotMove, this);
 				} else {
-					cout << "Making premove.\n";
+					board.debugMessage("Making user premove.");
 					preMove = move;
 					preMoveImage = visualChess[move[0]];
 				}
@@ -359,7 +358,7 @@ void ofApp::makeMove(int from, int to, int flag) {
 			}
 		}
 	}
-	cout << "Move not found, from: " << from << " to: " << to << " flag: " << flag << "\n";
+	board.debugMessage("Move not found, from: " + board.posToCoords(from) + " to: " + board.posToCoords(to) + " type: " + to_string(flag));
 }
 
 //--------------------------------------------------------------
@@ -405,19 +404,18 @@ void ofApp::mousePressed(int x, int y, int button){
 			pieceHeld = false;
 		}
 	} else {
-		cout << mouseX << ", " << mouseY << "\n";
 		if (mouseY > 240 && mouseY < 320 && mouseX > 160 && mouseX < 480) {
 			if (mouseX > 160 && mouseX < 240) {
-				cout << "PromotingQ\n";
+				board.debugMessage("PromotingQ");
 				makeMove(pieceHeldPos, promotePos, 6);
 			} else if (mouseX > 240 && mouseX < 320) {
-				cout << "PromotingR\n";
+				board.debugMessage("PromotingR");
 				makeMove(pieceHeldPos, promotePos, 7);
 			} else if (mouseX > 320 && mouseX < 400) {
-				cout << "PromotingB\n";
+				board.debugMessage("PromotingB");
 				makeMove(pieceHeldPos, promotePos, 8);
 			} else if (mouseX > 400 && mouseX < 480) {
-				cout << "PromotingN\n";
+				board.debugMessage("PromotingN");
 				makeMove(pieceHeldPos, promotePos, 9);
 			}
 		}

@@ -395,3 +395,4 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+bin/data/openingbooks/all.txt
