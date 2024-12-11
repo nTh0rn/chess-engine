@@ -37,7 +37,7 @@ public:
 	int whosTurn = 0;
 	bool botMoved = true;
 	int panicLevel = 0;
-	int initialDepth = 5;
+	int initialDepth = 6;
 	int depth = initialDepth;
 	int panicDepth = 3;
 	bool gameover = false;

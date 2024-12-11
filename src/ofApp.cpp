@@ -1,13 +1,11 @@
 #include "ofApp.h"
 
 //--------------------------------------------------------------
-void ofApp::setup(){
+void ofApp::setup() {
 	board = Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-	//board = Chess("7k/ppn2pp1/8/8/8/7q/1K6/5r2 w - - 0 1");
-	//board = Chess("rn4k1/ppp2ppp/8/2r5/8/BP3N1P/P4PP1/4R1K1 w q - 0 1");
 	board.genMoves();
 	board.debugMessage(board.genFen());
-	botTurn = 0; // 0=black, 1=white
+	botTurn = 1; // 0=black, 1=white
 
 	//Initialize images
 	bP.load("images/bP.png");
@@ -27,23 +25,24 @@ void ofApp::setup(){
 
 	myfont.load("fonts/arial.ttf", 32);
 
+
 	botTime = (botTurn == 0 ? &blackTime : &whiteTime);
-	playerTime = (botTurn == 1 ? &blackTime : &whiteTime);
+	playerTime = (botTime == &whiteTime ? &blackTime : &whiteTime);
+
 
 	if (botTurn == board.whosTurn) {
-		gameStarted = true;
 		clockThread = thread(&ofApp::clockRun, this);
 		threadedBoard = thread(&ofApp::makeBotMove, this);
 	}
 }
 
 //--------------------------------------------------------------
-void ofApp::update(){
-	
+void ofApp::update() {
+
 }
 
 //--------------------------------------------------------------
-void ofApp::draw(){
+void ofApp::draw() {
 	drawBoard();
 	if (!botThinking && threadedBoard.joinable()) {
 		threadedBoard.join();
@@ -53,6 +52,8 @@ void ofApp::draw(){
 			board.debugMessage("Premove executed.");
 			preMove = { -1, -1, -1 };
 		}
+		gameStarted = true;
+		threadedBoard = thread(&ofApp::makeBotMove, this);
 	}
 	drawClock();
 }
@@ -63,12 +64,30 @@ void ofApp::drawClock() {
 	ofDrawRectangle(640, 0, 260, 320);
 	ofSetColor(235);
 	ofDrawRectangle(640, 320, 260, 320);
-	string bt = to_string(int(blackTime / 60)) + ":" + to_string((int(blackTime) % 60) + blackTime - int(blackTime));
-	string wt = to_string(int(whiteTime / 60)) + ":" + to_string((int(whiteTime) % 60) + whiteTime - int(whiteTime));
+	string btMinutes = to_string(int(blackTime / 60));
+	if (int(blackTime / 60) < 10) {
+		btMinutes = "0" + btMinutes;
+	}
+	string btSeconds = to_string((int(blackTime) % 60) + blackTime - int(blackTime));
+	if (int(blackTime) % 60 < 10) {
+		btSeconds = "0" + btSeconds;
+	}
+
+	string wtMinutes = to_string(int(whiteTime / 60));
+	if (int(whiteTime / 60) < 10) {
+		wtMinutes = "0" + wtMinutes;
+	}
+	string wtSeconds = to_string((int(whiteTime) % 60) + whiteTime - int(whiteTime));
+	if (int(whiteTime) % 60 < 10) {
+		wtSeconds = "0" + wtSeconds;
+	}
+
+	string bt = btMinutes + ":" + btSeconds.substr(0,5);
+	string wt = wtMinutes + ":" + wtSeconds.substr(0,5);
 	ofSetColor(255);
-	myfont.drawString(bt, 650, 40);
+	myfont.drawString(bt, 685, 70);
 	ofSetColor(0);
-	myfont.drawString(wt, 650, 630);
+	myfont.drawString(wt, 685, 600);
 	ofSetColor(255);
 	wK_inverted.draw(695, 100, 150, 150);
 	ofSetColor(255);
@@ -243,28 +262,31 @@ void ofApp::clockRun() {
 	whiteTime = timeSec;
 	blackTime = timeSec;
 	while (!gameover) {
-		if (botThinking) {
-			this_thread::sleep_for(std::chrono::milliseconds(10));
-			if (*botTime <= 0) {
-				gameover = true;
-				break;
+		if (gameStarted) {
+			if (board.whosTurn != botTurn) {
+				this_thread::sleep_for(std::chrono::milliseconds(10));
+				if (*botTime <= 0) {
+					gameover = true;
+					break;
+				}
+				*botTime -= 0.01;
+			} else {
+				this_thread::sleep_for(std::chrono::milliseconds(10));
+				if (*playerTime <= 0) {
+					gameover = true;
+					break;
+				}
+				*playerTime -= 0.01;
+
+
 			}
-			*botTime -= 0.01;
-		} else {
-			this_thread::sleep_for(std::chrono::milliseconds(10));
-			if (*playerTime <= 0) {
-				gameover = true;
-				break;
-			}
-			*playerTime -= 0.01;
-			
 		}
 	}
 }
 
 //Keep track of bot's panic modes.
 void ofApp::timerRun(Chess* b) {
-	int time = (*botTime/50 * 1000);
+	int time = (*botTime/40 * 1000);
 	b->debugMessage("Panic level: " + to_string(b->panicLevel));
 	while (time > 0 && !botMoved) {
 		this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -305,6 +327,7 @@ void ofApp::makeBotMove() {
 	promoting = false;
 	board = botBoard;
 	botThinking = false;
+	whosTurn = 1 - whosTurn;
 }
 
 //Make a player move.
@@ -330,6 +353,7 @@ void ofApp::makeMove(int from, int to, int flag) {
 					board.debugMessage("Making user move.");
 					board.thisGamesMoves += board.posToCoords(move[0]) + board.posToCoords(move[1]) + " ";
 					board.makeMove(move);
+					whosTurn = 1 - whosTurn;
 					threadedBoard = thread(&ofApp::makeBotMove, this);
 				} else {
 					board.debugMessage("Making user premove.");
@@ -347,6 +371,7 @@ void ofApp::makeMove(int from, int to, int flag) {
 					board.debugMessage("Making user move.");
 					board.thisGamesMoves += board.posToCoords(move[0]) + board.posToCoords(move[1]) + " ";
 					board.makeMove(move);
+					whosTurn = 1 - whosTurn;
 					threadedBoard = thread(&ofApp::makeBotMove, this);
 				} else {
 					board.debugMessage("Making user premove.");

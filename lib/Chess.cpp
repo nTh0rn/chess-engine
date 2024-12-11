@@ -288,8 +288,9 @@ double Chess::evaluate() {
 				counter++;
 			}
 		}
-		if (counter <= 7) {
+		if (counter <= 6) {
 			endgame = true;
+			initialDepth = 7;
 		}
 	}
 
@@ -758,7 +759,7 @@ string Chess::openingBookMove() {
 	srand(time(0));
 	int tick = false;
 	if (openingBookGames.size() == 0) {
-		ifstream file("bin/data/openingbooks/all.txt");
+		ifstream file("bin/data/openingbooks/book.txt");
 		string line;
 		retryOpeningBook:
 		if (file.is_open()) {
@@ -1004,42 +1005,36 @@ int Chess::depthSearch(int depth, int displayAtDepth) {
 //Negated mini-max alpha-beta pruning
 double Chess::negaMax(int depth, double alpha, double beta, bool taking) {
 	if (depth <= 0 && !taking) {
-		
-		//Look for checkmate/stalemate
-		vector<array<int, 3>> moves;
-		int movesFound = 0;
-		for (int pos = 0; pos < 64; pos++) {
-			moves = getPieceMoves(pos);
-			for (auto move : moves) {
-				movesFound++;
+		if (inCheck(kingPos[whosTurn], whosTurn)) {
+			//Look for checkmate/stalemate
+			vector<array<int, 3>> moves;
+			int movesFound = 0;
+			for (int pos = 0; pos < 64; pos++) {
+				moves = getPieceMoves(pos);
+				for (auto move : moves) {
+					movesFound++;
+				}
+			}
+			if (movesFound == 0) {
+				return INT_MAX * (whosTurn == 1 ? -1 : 1) * (abs((initialDepth - depth)) != 0 ? abs((initialDepth - depth)) : 1);
 			}
 		}
-		if (movesFound == 0) {
-			if (!inCheck(kingPos[whosTurn], whosTurn)) {
-				return INT_MAX * (whosTurn == 1 ? 1 : -1) * initialDepth;
-			} else {
-				return INT_MAX * (whosTurn == 1 ? -1 : 1) * initialDepth;
-			}
-		}
-		return evaluate() * (whosTurn == 1 ? 1 : -1) * (panicLevel != 2 ? 1 : 0.7);
+		return evaluate() * (whosTurn == 1 ? 1 : -1) * (panicLevel == 2 ? 0.5 : 0.7) * (panicLevel == 1 ? 0.5 : 0.9);
 	} else {
-		moveToUnmake unmake;
-		vector<array<int, 3>> moves;
 		double value = -DBL_MAX;
 		int movesFound = 0;
-
 		for (int i = 0; i < 64; i++) {
 			int pos = spiralCoords[i];
-			moves = getPieceMoves(pos);
+			vector<array<int, 3>> moves = getPieceMoves(pos);
 			for (auto move : moves) {
-				if (gameover) {
-					return 0;
+				if (depth <= 0 && move[2] == 1) {
+					continue;
 				}
 				if (panicLevel > 0 && depth > panicDepth) {
 					depth = panicDepth;
 				}
 				movesFound++;
-				unmake = moveToUnmake(move, enPassant, canCastle, square[move[1]]);
+				moveToUnmake unmake = moveToUnmake(move, enPassant, canCastle, square[move[1]]);
 				makeMove(move);
 				if (panicLevel == 2) {
 					value = max(value, -negaMax(depth - 1, -beta, -alpha, false));
@@ -1055,8 +1050,8 @@ double Chess::negaMax(int depth, double alpha, double beta, bool taking) {
 		}
 		
 		if (movesFound == 0) {
-			if (!inCheck(kingPos[whosTurn], whosTurn)) {
-				return INT_MAX * (whosTurn == 1 ? 1 : -1) * (abs((initialDepth - depth)) != 0 ? abs((initialDepth - depth)) : 1);
+			if (inCheck(kingPos[whosTurn], whosTurn)) {
+				return INT_MAX * (whosTurn == 1 ? -1 : 1) * (abs((initialDepth - depth)) != 0 ? abs((initialDepth - depth)) : 1);
 			} else {
 				return INT_MAX * (whosTurn == 1 ? -1 : 1) * (abs((initialDepth - depth)) != 0 ? abs((initialDepth - depth)) : 1);
 			}
@@ -1131,21 +1126,20 @@ void Chess::makeBotMove(double alpha, double beta) {
 	moveToUnmake unmake;
 	vector<array<int, 3>> moves = {};
 	array<int, 3> bestMove = { -1, -1, -1 };
+	array<int, 3> nextBestMoveRepitition = { -1, -1, -1 };
 	array<int, 3> nextBestMove = { -1, -1, -1 };
 	double init_value = -DBL_MAX;
 	double value = init_value;
 	double bestValue = value;
 	
 	depth--; //Decreases by one because at least one depth is always searched outside of negamax().
-
+	int pos = 0;
 	for (int i = 0; i < 64; i++) {
-		int pos = spiralCoords[i];
+		pos = spiralCoords[i];
 		moves = getPieceMoves(pos);
-
 		for (auto move : moves) {
 			debugMessage("Looking at move " + posToCoords(move[0]) + " to " + posToCoords(move[1]) + " type " + to_string(move[2]));
 			unmake = moveToUnmake(move, enPassant, canCastle, square[move[1]]);
-
 			makeMove(move);
 			
 			value = max(value, -negaMax(depth, -beta, -alpha, (move[2] == 1 || move[2] == 3)));
@@ -1155,9 +1149,9 @@ void Chess::makeBotMove(double alpha, double beta) {
 				bestValue = value;
 				if (bestMove[0] == -1) {
 					bestMove = move;
-					nextBestMove = bestMove;
+					nextBestMoveRepitition = bestMove;
 				} else {
-					nextBestMove = bestMove;
+					nextBestMoveRepitition = bestMove;
 					bestMove = move;
 				}
 				debugMessage("Best move is " + posToCoords(move[0]) + " to " + posToCoords(move[1]) + " type " + to_string(move[2]));
@@ -1166,7 +1160,7 @@ void Chess::makeBotMove(double alpha, double beta) {
 	}
 	outer:
 	if (value != init_value && !gameover) {
-		debugMessage("Making move " + posToCoords(bestMove[0]) + " " + posToCoords(bestMove[1]) + " " + posToCoords(bestMove[2]) + ", Value: " + to_string(value));
+		debugMessage("Making move " + posToCoords(bestMove[0]) + " " + posToCoords(bestMove[1]) + ", Value: " + to_string(value));
 		string moveUCI = posToCoords(bestMove[0]) + posToCoords(bestMove[1]);
 		int counter = 0;
 		for (auto move : previousMoves) {
@@ -1175,14 +1169,14 @@ void Chess::makeBotMove(double alpha, double beta) {
 			}
 		}
 		previousMoves.insert(previousMoves.begin(), moveUCI);
-		if (previousMoves.size() > 10) {
+		if (previousMoves.size() > 15) {
 			previousMoves.pop_back();
 		}
 		
 		thisGamesMoves += posToCoords(bestMove[0]) + posToCoords(bestMove[1]) + " ";
 		if (counter >= 2) {
 			debugMessage("Repitition, making next best move.");
-			makeMove(nextBestMove);
+			makeMove(nextBestMoveRepitition);
 		} else {
 			makeMove(bestMove);
 		}
@@ -1279,3 +1273,4 @@ void Chess::show() {
 	}
 	cout << "\n\n";
 }
+
