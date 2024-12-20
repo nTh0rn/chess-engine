@@ -40,9 +40,6 @@
     <ClCompile Include="lib\Chess.cpp">
       <Filter>lib</Filter>
     </ClCompile>
-    <ClCompile Include="lib\moveToUnmake.cpp">
-      <Filter>lib</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="src">
@@ -105,9 +102,6 @@
       <Filter>addons\ofxGui\src</Filter>
     </ClInclude>
     <ClInclude Include="include\Chess.h">
-      <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="include\moveToUnmake.h">
       <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>

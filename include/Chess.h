@@ -15,58 +15,97 @@
 #include <fstream>
 #include <sstream>
 #include <direct.h>
-#include "moveToUnmake.h"
+#include <optional>
+#include <cstdint>
+#include <random>
+#include <unordered_map>
 
 using namespace std;
 
 class Chess {
 public:
-	Chess();
-	Chess(string fen, array<int, 2> time = {-1, -1});
-	struct unmakeMove;
-	array<bool, 4> canCastle = {false, false, false, false}; //K Q k q
-	int enPassant = { -1 };
-	array<char, 64> square = { ' ' };
-	array<int, 64> spiralCoords = { 0 };
-	vector<array<int, 3>> moves; //from, to, flag (0=no capture, 1=capture, 2=en-passantable move, 3=en-passant, 4=q castle, 5=k castle, 6,7,8,9=q,r,b,n promotion)
-	vector <int> moveValues;
-	bool gameStarted;
-	int fullMoves = 0;
-	int halfMoves = 0;
-	int plys = 0;
-	int whosTurn = 0;
-	bool botMoved = true;
-	int panicLevel = 0;
-	int initialDepth = 6;
-	int depth = initialDepth;
-	int panicDepth = 3;
-	bool gameover = false;
-	string thisGamesMoves;
-	vector<string> openingBookGames = {};
-	bool outOfBook = false;
-	vector<string> previousMoves;
-	array <int, 2> kingPos;
-	bool endgame = false;
-	bool showDebugMessages = true;
-	void show();
-	string genFen();
-	string genFenRepitition();
-	double evaluate();
-	string posToCoords(int pos);
-	array<int, 2> coordsToPos(string coords);
-	void genMoves();
-	vector<array<int, 3>> getPieceMoves(int pos);
-	bool kingSafe(array<int, 3> move);
-	bool inCheck(int pos, int turn);
-	vector<array<int, 3>> genPawnMoves(int pos);
-	vector<array<int, 3>> genSlidingMoves(int pos, int type);
-	vector<array<int, 3>> genPositionalMoves(int pos, array<int, 8> area, bool king = false);
-	void makeMove(array<int, 3> move);
-	void unmakeMove(moveToUnmake unmake);
-	int depthSearch(int depth, int displayAtDepth = -1);
-	double negaMax(int depth, double alpha, double beta, bool taking=false);
-	void makeBotMove(double alpha, double beta);
-	void genSpiral();
-	string openingBookMove();
-	void debugMessage(string input);
+    Chess(); // Default constructor
+    Chess(string fen, array<int, 2> time = {-1, -1}); // Overloaded constructor
+
+    //Castling rights
+    struct CanCastle {
+        bool wK;
+        bool wQ;
+        bool bK;
+        bool bQ;
+    };
+
+    // Move, holds from, to, and flag
+    struct Move {
+        int from;
+        int to;
+        int flag;
+    };
+
+    // Holds Move, en passant position, castling rights, and the piece taken.
+    struct MoveToUnmake {
+        Move move;
+        int enPassant;
+        CanCastle castlingRights;
+        char takenPiece;
+    };
+
+    struct TranspositionTableEntry {
+        int depth;        // Search depth of the stored evaluation
+        double value;        // Evaluation of the position
+        int flag;         // Type of value: exact, lower bound, or upper bound
+        Move move; // Best move for this position
+    };
+    
+    struct CanCastle castlingRights {false, false, false, false}; // Global castling rights
+    int enPassant = -1; // En passant coordinate
+    array<char, 64> square = { ' ' }; // Board pieces
+    array<int, 64> spiralCoords = { 0 }; // Spiral-coordinates, generated in genSpiral().
+    vector<Move> legalMoves; // Holds all current legal moves.
+    bool gameStarted; // Whether or not the game has started
+    int fullMoves = 0; // Starts at 1, increases after black moves.
+    int halfMoves = 0; // Moves since last pawn move (50 move rule)
+    int whosTurn = 0; // whosTurn
+    int panicLevel = 0; // How rushed the bot is, operated by driver class since its usually time-dependant.
+    int initialDepth = 6; // Initial depth value
+    int depth = initialDepth; // Negamax depth value.
+    int panicDepth = 3; // Panic level 3 depth
+    int gameStatus = -1; // -1=playing, 0=black won, 1=white won, 2=stalemate
+    string thisGamesMoves; // Moves made this game
+    vector<string> openingBookGames = {}; // All games in the opening book (narrows down each move)
+    bool outOfBook = true; // Whether to continue using the book
+    vector<string> previousMoves; // The previous moves made.
+    array <int, 2> kingPos; // 0=b, 1=w. Is an array and not struct for easy use alongside whosTurn.
+    bool endgame = false; // Whether the game has reached the endgame, used for evaluation.
+    bool showDebugMessages = true; // Whether or not to show debug messages
+    // Zobrist hashing variables
+    uint64_t zobristTable[64][12]; // 64 squares x 12 piece types
+    uint64_t zobristTurn;          // Extra hash for whose turn it is
+    unordered_map<uint64_t, TranspositionTableEntry> transpositionTable;
+    void show();
+    string genFen();
+    string genFenRepitition();
+    double evaluate();
+    string posToCoords(int pos);
+    array<int, 2> coordsToPos(string coords);
+    void genMoves();
+    vector<Move> getPieceMoves(int pos);
+    bool kingSafe(Move move);
+    bool inCheck(int pos, int turn);
+    vector<Move> genPawnMoves(int pos);
+    vector<Move> genSlidingMoves(int pos, int type);
+    vector<Move> genPositionalMoves(int pos, array<int, 8> area, bool king = false);
+    void makeMove(Move move);
+    void unmakeMove(MoveToUnmake move);
+    int depthSearch(int depth, int displayAtDepth = -1);
+    double negaMax(int depth, double alpha, double beta, bool taking=false);
+    void makeBotMove(double alpha, double beta);
+    void genSpiral();
+    string openingBookMove();
+    void debugMessage(string input);
+    void genZobrist();
+    int pieceToIndex(char piece);
+    uint64_t genHash(const array<char, 64>& board, int turn);
+    optional<Move> getHashMove(const array<char, 64>& board, int turn);
+    void addHashMove(const std::array<char, 64>& board, int turn, const Move& move, int value, int depth, int flag);
 };
