@@ -134,8 +134,6 @@ string Chess::genFen() {
     }
 
     genSpiral();
-    genZobrist();
-
     fen += (whosTurn == 1) ? " w " : " b "; // Whos turn
 
     //Castling rights
@@ -601,7 +599,7 @@ vector<Chess::Move> Chess::genPawnMoves(int pos) {
                     }
                 }
             } else if(enPassant == cap) {
-                if (kingSafe({ pos, cap, 3 })) {
+                if (square[enPassant + 8 * dir] != square[pos] && kingSafe({ pos, cap, 3 })) {
                     moves.push_back({ pos, cap, 3 });
                 }
             }
@@ -995,17 +993,6 @@ int Chess::depthSearch(int depth, int displayAtDepth) {
 
 //Negated mini-max alpha-beta pruning
 double Chess::negaMax(int depth, double alpha, double beta, bool taking) {
-    uint64_t hash = genHash(square, whosTurn);
-    if (auto it = transpositionTable.find(hash); it != transpositionTable.end()) {
-        const TranspositionTableEntry& entry = it->second;
-
-        // Use stored value if depth and bounds are compatible
-        if (entry.depth >= depth) {
-            if (entry.flag == 0) return entry.value;                 // Exact score
-            if (entry.flag == -1 && entry.value <= alpha) return alpha; // Upper bound
-            if (entry.flag == 1 && entry.value >= beta) return beta;   // Lower bound
-        }
-    }
     if (depth <= 0 && !taking) {
         //Look for checkmate/stalemate
         vector<Move> moves;
@@ -1026,12 +1013,9 @@ double Chess::negaMax(int depth, double alpha, double beta, bool taking) {
         double eval = evaluate();
         return eval *
             (whosTurn == 1 ? 1 : -1) *
-            (panicLevel == 2 ? 0.5 : 0.7) *
-            (panicLevel == 1 ? 0.5 : 0.9) + ((eval*(whosTurn == 1 ? 1 : -1) > 0 ? 1 : -1)*(
-            (endgame ? (12-sqrt(pow((abs(kingPos[0] % 8)-(abs(kingPos[1] % 8))), 2) + pow((abs(int(kingPos[0]/8)) - (abs(int(kingPos[1]/8)))), 2))) : 1)));
+            (panicLevel == 2 ? 0.7 : 1) *
+            (panicLevel == 1 ? 0.9 : 1);
     } else {
-        Move bestMove;
-        double maxValue = -DBL_MAX;
         double value = -DBL_MAX;
         int movesFound = 0;
         for (int pos : spiralCoords) {
@@ -1048,10 +1032,6 @@ double Chess::negaMax(int depth, double alpha, double beta, bool taking) {
                 makeMove(move);
                 value = max(value, -negaMax(depth - 1, -beta, -alpha, (panicLevel == 2 ? false : (unmake.takenPiece != ' '))));
                 unmakeMove(unmake);
-                if (value > maxValue) {
-                    maxValue = value;
-                    bestMove = move;
-                }
                 alpha = max(alpha, value);
                 if (alpha >= beta) {
                     goto outerNegaMax;
@@ -1066,19 +1046,9 @@ double Chess::negaMax(int depth, double alpha, double beta, bool taking) {
                 return INT_MAX * (whosTurn == 1 ? 1 : -1) * (abs((initialDepth - depth)) != 0 ? abs((initialDepth - depth)) : 1);
             }
         }
-        TranspositionTableEntry entry;
-        entry.depth = depth;
-        entry.value = maxValue;
-
-        if (maxValue <= alpha) entry.flag = -1;  // Upper bound
-        else if (maxValue >= beta) entry.flag = 1; // Lower bound
-        else entry.flag = 0; // Exact score
-
-        entry.move = bestMove;
-        transpositionTable[hash] = entry;
-
+        
         outerNegaMax:
-        return maxValue;
+        return value;
     }
 }
 
@@ -1116,72 +1086,6 @@ array<int, 2> Chess::coordsToPos(string coords) {
     return { from, to };
 }
 
-void Chess::genZobrist() {
-    mt19937_64 rng(0xDEADBEEF); // Fixed seed for reproducibility
-    uniform_int_distribution<uint64_t> dist;
-
-    for (int square = 0; square < 64; ++square) {
-        for (int piece = 0; piece < 12; ++piece) {
-            zobristTable[square][piece] = dist(rng);
-        }
-    }
-    zobristTurn = dist(rng);
-}
-
-int Chess::pieceToIndex(char piece) {
-    switch (piece) {
-    case 'P': return 0; case 'p': return 1;
-    case 'N': return 2; case 'n': return 3;
-    case 'B': return 4; case 'b': return 5;
-    case 'R': return 6; case 'r': return 7;
-    case 'Q': return 8; case 'q': return 9;
-    case 'K': return 10; case 'k': return 11;
-    default:  return -1; // Invalid piece
-    }
-}
-
-uint64_t Chess::genHash(const array<char, 64>& board, int turn) {
-    uint64_t hash = 0;
-
-    for (int square = 0; square < 64; ++square) {
-        char piece = board[square];
-        if (piece != ' ') { // Skip empty squares
-            int pieceIndex = pieceToIndex(piece);
-            if (pieceIndex != -1) { // Ensure valid piece
-                hash ^= zobristTable[square][pieceIndex];
-            }
-        }
-    }
-
-    // Include turn in the hash
-    if (turn == 1) {
-        hash ^= zobristTurn;
-    }
-
-    return hash;
-}
-optional<Chess::Move> Chess::getHashMove(const array<char, 64>& board, int turn) {
-    uint64_t hash = genHash(board, turn);
-    auto it = transpositionTable.find(hash);
-
-    if (it != transpositionTable.end()) {
-        return it->second.move; // Return the best move from the entry
-    }
-    return std::nullopt; // Not found
-}
-void Chess::addHashMove(const std::array<char, 64>& board, int turn, const Move& move, int value, int depth, int flag) {
-    uint64_t hash = genHash(board, turn);
-
-    // Create a new TranspositionTableEntry
-    TranspositionTableEntry entry;
-    entry.depth = depth;
-    entry.value = value; // For example, the evaluation of the board
-    entry.flag = flag;   // Type of the stored value: exact, upper bound, lower bound
-    entry.move = move;
-
-    // Insert or update the entry in the transposition table
-    transpositionTable[hash] = entry;
-}
 
 
 //Makes a move for the bot
@@ -1191,7 +1095,7 @@ void Chess::makeBotMove(double alpha, double beta) {
     //Check for book move
     if (!outOfBook) {
         string bookMove = openingBookMove();
-        if (bookMove != "None") {
+        if (bookMove != "None" && bookMove != "") {
             genMoves();
             array<int, 2> fromTo = coordsToPos(bookMove);
             for (Move move : legalMoves) {

@@ -2,11 +2,12 @@
 
 //--------------------------------------------------------------
 void ofApp::setup() {
-    //board = Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    board = Chess("K7/1R6/8/8/8/2k5/8/8 w - - 0 1");
+    board = Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    //board = Chess("K7/1R6/8/8/8/2k5/8/8 w - - 0 1");
     board.genMoves();
     board.debugMessage(board.genFen());
-    botTurn = 1; // 0=black, 1=white
+    gamemode = 2;
+    whosTurn = board.whosTurn;
 
     //Initialize images
     bP.load("images/bP.png");
@@ -25,16 +26,7 @@ void ofApp::setup() {
     wK_inverted.load("images/wK_inverted.png");
 
     myfont.load("fonts/arial.ttf", 32);
-
-
-    botTime = (botTurn == 0 ? &blackTime : &whiteTime);
-    playerTime = (botTime == &whiteTime ? &blackTime : &whiteTime);
-
-
-    if (botTurn == board.whosTurn) {
-        clockThread = thread(&ofApp::clockRun, this);
-        threadedBoard = thread(&ofApp::makeBotMove, this);
-    }
+    clockThread = thread(&ofApp::clockRun, this);
 }
 
 //--------------------------------------------------------------
@@ -44,19 +36,30 @@ void ofApp::update() {
 
 //--------------------------------------------------------------
 void ofApp::draw() {
-    drawBoard();
-    if (!botThinking && threadedBoard.joinable()) {
-        threadedBoard.join();
-        board.debugMessage("Bot moved. Eval: " + to_string(board.evaluate()));
-        if (preMove.from != -1) {
-            tryMove(preMove);
-            board.debugMessage("preMove executed.");
-            preMove = { -1, -1, -1 };
+    if (startScreen) {
+
+    } else {
+        if ((gamemode == 0 || gamemode == 2) && botInitMove == false) {
+            threadedBoard = thread(&ofApp::makeBotMove, this);
+            botInitMove = true;
         }
-        gameStarted = true;
-        threadedBoard = thread(&ofApp::makeBotMove, this);
+    
+        drawBoard();
+        if (!botThinking && threadedBoard.joinable()) {
+            threadedBoard.join();
+            board.debugMessage("Bot moved. Eval: " + to_string(board.evaluate()));
+            if (preMove.from != -1) {
+                tryMove(preMove);
+                board.debugMessage("preMove executed.");
+                preMove = { -1, -1, -1 };
+            }
+            gameStarted = true;
+            if (gamemode == 0) {
+                threadedBoard = thread(&ofApp::makeBotMove, this);
+            }
+        }
+        drawClock();
     }
-    drawClock();
 }
 
 //Draws the clock on the right;
@@ -94,16 +97,11 @@ void ofApp::drawClock() {
     ofSetColor(255);
     wK.draw(695, 390, 150, 150);
     ofSetColor(0, 100);
-    if (botThinking) {
-        ofDrawRectangle(640, 320*(1-botTurn), 260, 320);
-    } else {
-        ofDrawRectangle(640, 320*botTurn, 260, 320);
-    }
+    ofDrawRectangle(640, 320 * (1-whosTurn), 260, 320);
 }
 
 //Draw the board.
 void ofApp::drawBoard() {
-    tempBoard = board;
     int mPos = int(mouseY / 80) * 8 + int(mouseX / 80); //Mouse position
     updateVisualChess(); //Update the visual board
     ofColor darkTile(181, 136, 99);
@@ -126,7 +124,7 @@ void ofApp::drawBoard() {
 
     //Draw promoting visuals
     if (promoting) {
-        if (tempBoard.square[pieceHeldPos] == 'P') {
+        if (board.square[pieceHeldPos] == 'P') {
             promotionPieces = { wQ, wR, wB, wN };
         }
         if (mouseY > 240 && mouseY < 320 && mouseX > 160 && mouseX < 480) {
@@ -161,9 +159,9 @@ void ofApp::drawBoard() {
 
     //Draw legal moves for piece
     } else if (pieceHeld) {
-        moves = tempBoard.getPieceMoves(pieceHeldPos);
+        moves = board.getPieceMoves(pieceHeldPos);
         for (auto move : moves) {
-            if (tempBoard.square[move.to] == ' ' && move.flag != 3) {
+            if (board.square[move.to] == ' ' && move.flag != 3) {
                 ofSetColor(255, 0, 0, 100);
                 ofDrawCircle(80 * (move.to % 8)+40, 80 * int(move.to / 8)+40, 10);
             } else {
@@ -209,9 +207,8 @@ void ofApp::drawBoard() {
 
 //Updates the visual board array.
 void ofApp::updateVisualChess() {
-    Chess tempBoard = board;
     for (int pos = 0; pos < 64; pos++) {
-        switch (tempBoard.square[pos]) {
+        switch (board.square[pos]) {
         case 'p':
             visualChess[pos] = bP;
             break;
@@ -264,22 +261,20 @@ void ofApp::clockRun() {
     blackTime = timeSec;
     while (!gameover) {
         if (gameStarted) {
-            if (board.whosTurn != botTurn) {
+            if (whosTurn == 0) {
                 this_thread::sleep_for(std::chrono::milliseconds(10));
-                if (*botTime <= 0) {
+                if (blackTime <= 0) {
                     gameover = true;
                     break;
                 }
-                *botTime -= 0.01;
+                blackTime -= 0.01;
             } else {
                 this_thread::sleep_for(std::chrono::milliseconds(10));
-                if (*playerTime <= 0) {
+                if (whiteTime <= 0) {
                     gameover = true;
                     break;
                 }
-                *playerTime -= 0.01;
-
-
+                whiteTime -= 0.01;
             }
         }
     }
@@ -287,20 +282,21 @@ void ofApp::clockRun() {
 
 //Keep track of bot's panic modes.
 void ofApp::timerRun(Chess* b) {
-    int time = (*botTime/40 * 1000);
+    int time = ((((whosTurn == 0 ? blackTime : whiteTime)/40) + increment) * 10);
+    cout << "\nTimer " << (((whosTurn == 0 ? blackTime : whiteTime) / 40) + increment) << "\n";
     b->debugMessage("Panic level: " + to_string(b->panicLevel));
     while (time > 0 && !botMoved) {
-        this_thread::sleep_for(std::chrono::milliseconds(1));
+        this_thread::sleep_for(std::chrono::milliseconds(100));
         time--;
     }
     if (!botMoved) {
         b->panicLevel++;
         b->debugMessage("Panic level: " + to_string(b->panicLevel));
     }
-    
-    time = (*botTime / 50 * 350);
+    time = ((((whosTurn == 0 ? blackTime : whiteTime) / 40) + increment) * 3);
+    cout << "\nTimer2 " << (((whosTurn == 0 ? blackTime : whiteTime) / 40) * 5)/10 << "\n";
     while (time > 0 && !botMoved) {
-        this_thread::sleep_for(std::chrono::milliseconds(1));
+        this_thread::sleep_for(std::chrono::milliseconds(100));
         time--;
     }
     if (!botMoved) {
@@ -317,7 +313,9 @@ void ofApp::makeBotMove() {
     botThinking = true;
     Chess botBoard;
     botBoard = board;
-    board.whosTurn = 1 - board.whosTurn; //Inverse turn so player can preMove
+    if (gamemode != 0) {
+        board.whosTurn = 1 - board.whosTurn; //Inverse turn so player can preMove
+    }
     botMoved = false;
     timerThread = thread(&ofApp::timerRun, this, &botBoard);
     botBoard.makeBotMove(-DBL_MAX, DBL_MAX);
@@ -329,20 +327,31 @@ void ofApp::makeBotMove() {
     board = botBoard;
     botThinking = false;
     whosTurn = 1 - whosTurn;
+    if (whosTurn == 0) {
+        blackTime += increment;
+    } else {
+        whiteTime += increment;
+    }
 }
 
 void ofApp::makeMove(Chess::Move move) {
     // Start the clock if its the player's move.
-    if (!gameStarted && board.whosTurn != botTurn) {
-        gameStarted = true;
-        clockThread = thread(&ofApp::clockRun, this);
-    }
+    gameStarted = true;
     board.makeMove(move);
+    whosTurn = 1 - whosTurn;
+    if (whosTurn == 0) {
+        blackTime += increment;
+    } else {
+        whiteTime += increment;
+    }
+    if (gamemode == 1 || gamemode == 2) {
+        threadedBoard = thread(&ofApp::makeBotMove, this);
+    }
 }
 
 //Make a player move.
 void ofApp::tryMove(Chess::Move moveToTry) {
-    if (gameover) {
+    if (gameover || gamemode == 0) {
         return;
     }
     
@@ -358,8 +367,6 @@ void ofApp::tryMove(Chess::Move moveToTry) {
                     board.debugMessage("Making user move.");
                     board.thisGamesMoves += board.posToCoords(move.from) + board.posToCoords(move.to) + " ";
                     makeMove(move);
-                    whosTurn = 1 - whosTurn;
-                    threadedBoard = thread(&ofApp::makeBotMove, this);
                 } else {
                     board.debugMessage("Making user preMove.");
                     preMove = move;
@@ -376,8 +383,6 @@ void ofApp::tryMove(Chess::Move moveToTry) {
                     board.debugMessage("Making user move.");
                     board.thisGamesMoves += board.posToCoords(move.from) + board.posToCoords(move.to) + " ";
                     makeMove(move);
-                    whosTurn = 1 - whosTurn;
-                    threadedBoard = thread(&ofApp::makeBotMove, this);
                 } else {
                     board.debugMessage("Making user preMove.");
                     preMove = move;
@@ -413,19 +418,18 @@ void ofApp::mouseDragged(int x, int y, int button){
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button){
     preMove = { -1, -1, -1 };
-    Chess tempBoard = board;
-    tempBoard.genMoves();
+    board.genMoves();
     int mPos = int(mouseY / 80) * 8 + int(mouseX / 80);
     if (startScreen) {
 
     } else if(mouseX < 640) {
         if (!promoting) {
-            if (pieceHeld == false && tempBoard.square[mPos] != ' ' && (tempBoard.square[mPos] < 97 ? 1 : 0) == tempBoard.whosTurn && tempBoard.getPieceMoves(mPos).size() > 0) {
+            if (pieceHeld == false && board.square[mPos] != ' ' && (board.square[mPos] < 97 ? 1 : 0) == board.whosTurn && board.getPieceMoves(mPos).size() > 0) {
                 pieceHeld = true;
                 pieceHeldPos = mPos;
                 pieceHeldImage = visualChess[pieceHeldPos];
             } else if (pieceHeld && mPos != pieceHeldPos) {
-                if (tolower(tempBoard.square[pieceHeldPos]) == 'p' && (mPos <= 7 || mPos >= 56)) {
+                if (tolower(board.square[pieceHeldPos]) == 'p' && (mPos <= 7 || mPos >= 56)) {
                     promoting = true;
                     promotePos = mPos;
                     return;
@@ -461,13 +465,12 @@ void ofApp::mousePressed(int x, int y, int button){
 
 //--------------------------------------------------------------
 void ofApp::mouseReleased(int x, int y, int button){
-    Chess tempBoard = board;
     int mPos = int(mouseY / 80) * 8 + int(mouseX / 80);
     if (startScreen) {
 
     } else if(mouseX < 640) {
         if (mPos != pieceHeldPos && pieceHeld && !promoting) {
-            if (tolower(tempBoard.square[pieceHeldPos]) == 'p' && (mPos <= 7 || mPos >= 56)) {
+            if (tolower(board.square[pieceHeldPos]) == 'p' && (mPos <= 7 || mPos >= 56)) {
                 promoting = true;
                 promotePos = mPos;
                 return;

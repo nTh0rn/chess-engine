@@ -73,15 +73,11 @@ public:
     int gameStatus = -1; // -1=playing, 0=black won, 1=white won, 2=stalemate
     string thisGamesMoves; // Moves made this game
     vector<string> openingBookGames = {}; // All games in the opening book (narrows down each move)
-    bool outOfBook = true; // Whether to continue using the book
+    bool outOfBook = false; // Whether to continue using the book
     vector<string> previousMoves; // The previous moves made.
     array <int, 2> kingPos; // 0=b, 1=w. Is an array and not struct for easy use alongside whosTurn.
     bool endgame = false; // Whether the game has reached the endgame, used for evaluation.
     bool showDebugMessages = true; // Whether or not to show debug messages
-    // Zobrist hashing variables
-    uint64_t zobristTable[64][12]; // 64 squares x 12 piece types
-    uint64_t zobristTurn;          // Extra hash for whose turn it is
-    unordered_map<uint64_t, TranspositionTableEntry> transpositionTable;
     void show();
     string genFen();
     string genFenRepitition();
@@ -103,9 +99,4 @@ public:
     void genSpiral();
     string openingBookMove();
     void debugMessage(string input);
-    void genZobrist();
-    int pieceToIndex(char piece);
-    uint64_t genHash(const array<char, 64>& board, int turn);
-    optional<Move> getHashMove(const array<char, 64>& board, int turn);
-    void addHashMove(const std::array<char, 64>& board, int turn, const Move& move, int value, int depth, int flag);
 };
