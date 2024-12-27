@@ -27,6 +27,20 @@ public:
     Chess(); // Default constructor
     Chess(string fen, array<int, 2> time = {-1, -1}); // Overloaded constructor
 
+    enum MoveFlag {
+        EMPTY = -1,
+        NONE = 0,                // Regular move
+        EN_PASSANTABLE = 1,      // En-passantable
+        Q_CASTLE = 2,    // Queenside castle
+        K_CASTLE = 3,     // Kingside castle
+        EN_PASSANT = 4,          // En passant
+        CAPTURE = 5,             // Capture
+        N_PROMOTION = 6,    // Knight promotion
+        B_PROMOTION = 7,    // Bishop promotion
+        R_PROMOTION = 8,      // Rook promotion
+        Q_PROMOTION = 9      // Queen promotion
+    };
+
     //Castling rights
     struct CanCastle {
         bool wK;
@@ -39,22 +53,15 @@ public:
     struct Move {
         int from;
         int to;
-        int flag;
+        MoveFlag flag;
     };
 
     // Holds Move, en passant position, castling rights, and the piece taken.
-    struct MoveToUnmake {
+    struct MoveUnmake {
         Move move;
         int enPassant;
         CanCastle castlingRights;
         char takenPiece;
-    };
-
-    struct TranspositionTableEntry {
-        int depth;        // Search depth of the stored evaluation
-        double value;        // Evaluation of the position
-        int flag;         // Type of value: exact, lower bound, or upper bound
-        Move move; // Best move for this position
     };
     
     struct CanCastle castlingRights {false, false, false, false}; // Global castling rights
@@ -66,18 +73,23 @@ public:
     int fullMoves = 0; // Starts at 1, increases after black moves.
     int halfMoves = 0; // Moves since last pawn move (50 move rule)
     int whosTurn = 0; // whosTurn
-    int panicLevel = 0; // How rushed the bot is, operated by driver class since its usually time-dependant.
+    int panicLevel = 0; // How rushed the bot is, managed by driver class since its usually time-dependant.
     int initialDepth = 6; // Initial depth value
     int depth = initialDepth; // Negamax depth value.
-    int panicDepth = 3; // Panic level 3 depth
+    int panicDepth = 4; // Panic level 3 depth
     int gameStatus = -1; // -1=playing, 0=black won, 1=white won, 2=stalemate
+    double evaluation = 0;
+    vector<string> debugMoveColors;
     string thisGamesMoves; // Moves made this game
+    string visualGamesMoves;
     vector<string> openingBookGames = {}; // All games in the opening book (narrows down each move)
     bool outOfBook = false; // Whether to continue using the book
     vector<string> previousMoves; // The previous moves made.
     array <int, 2> kingPos; // 0=b, 1=w. Is an array and not struct for easy use alongside whosTurn.
     bool endgame = false; // Whether the game has reached the endgame, used for evaluation.
     bool showDebugMessages = true; // Whether or not to show debug messages
+    Move negaMaxResult{ 0,1,EMPTY };
+    unordered_map<string, int> positionCount;
     void show();
     string genFen();
     string genFenRepitition();
@@ -92,11 +104,14 @@ public:
     vector<Move> genSlidingMoves(int pos, int type);
     vector<Move> genPositionalMoves(int pos, array<int, 8> area, bool king = false);
     void makeMove(Move move);
-    void unmakeMove(MoveToUnmake move);
+    void unmakeMove(MoveUnmake move);
     int depthSearch(int depth, int displayAtDepth = -1);
-    double negaMax(int depth, double alpha, double beta, bool taking=false);
+    double negaMax(int depth, double alpha, double beta, bool taking=false, bool root=false);
     void makeBotMove(double alpha, double beta);
     void genSpiral();
     string openingBookMove();
     void debugMessage(string input);
+    inline bool compareMoves(const Move& a, const Move& b) {
+        return static_cast<int>(a.flag) > static_cast<int>(b.flag); // Sort by flag value (higher priority first)
+    }
 };

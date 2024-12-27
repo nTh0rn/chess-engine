@@ -18,6 +18,7 @@ class ofApp : public ofBaseApp{
         void clockRun();
         void drawClock();
         void makeBotMove();
+        double timeMultiplier(double timeTotal, double timeLeft);
         bool startScreen = false;
         bool botInitMove = false;
         int playerTurn;
@@ -31,7 +32,7 @@ class ofApp : public ofBaseApp{
         bool promoting = false;
         int promotePos;
         bool botThinking;
-        Chess::Move preMove { -1, -1, -1 };
+        Chess::Move preMove { -1, -1, Chess::EMPTY };
         double whiteTime;
         double blackTime;
         int gamemode = 0; // 0=Bot(w) v Bot(b), 1 = Player(w) v Bot(b), 2 = Bot(w) v Player(b), 3 = Player(w) v Player(b)
@@ -42,7 +43,7 @@ class ofApp : public ofBaseApp{
         int timeSec = 5*60;
         int timeWait = timeSec / 40;
         int timer = 0;
-        int increment = 10;
+        int increment = 0;
         double* playerTime1;
         double* playerTime2;
         int whosTurn = 0;
