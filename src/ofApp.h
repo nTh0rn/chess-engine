@@ -40,7 +40,7 @@ class ofApp : public ofBaseApp{
         bool gameover = false;
         bool botMoved = false;
         bool gameStarted = false;
-        int timeSec = 5*60;
+        int timeSec = 10*60;
         int timeWait = timeSec / 40;
         int timer = 0;
         int increment = 0;

@@ -76,6 +76,7 @@ public:
     int panicLevel = 0; // How rushed the bot is, managed by driver class since its usually time-dependant.
     int initialDepth = 6; // Initial depth value
     int depth = initialDepth; // Negamax depth value.
+    int depthCeiling = initialDepth;
     int panicDepth = 4; // Panic level 3 depth
     int gameStatus = -1; // -1=playing, 0=black won, 1=white won, 2=stalemate
     double evaluation = 0;
@@ -87,15 +88,17 @@ public:
     vector<string> previousMoves; // The previous moves made.
     array <int, 2> kingPos; // 0=b, 1=w. Is an array and not struct for easy use alongside whosTurn.
     bool endgame = false; // Whether the game has reached the endgame, used for evaluation.
-    bool showDebugMessages = true; // Whether or not to show debug messages
+    bool showDebugMessages = false; // Whether or not to show debug messages
     Move negaMaxResult{ 0,1,EMPTY };
     unordered_map<string, int> positionCount;
+    void enableANSI();
     void show();
     string genFen();
     string genFenRepitition();
     double evaluate();
     string posToCoords(int pos);
     array<int, 2> coordsToPos(string coords);
+    Move UCIToMove(string uci);
     void genMoves();
     vector<Move> getPieceMoves(int pos);
     bool kingSafe(Move move);
@@ -111,6 +114,8 @@ public:
     void genSpiral();
     string openingBookMove();
     void debugMessage(string input);
+    Move iterativeDeepening();
+    double nullMovePruning(int depth, double alpha, double beta, bool taking);
     inline bool compareMoves(const Move& a, const Move& b) {
         return static_cast<int>(a.flag) > static_cast<int>(b.flag); // Sort by flag value (higher priority first)
     }

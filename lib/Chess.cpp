@@ -12,8 +12,24 @@ void Chess::debugMessage(string input) {
 //Default constructor
 Chess::Chess() {};
 
+void Chess::enableANSI() {
+    // Get the handle for the standard output (Console)
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD dwMode = 0;
+
+    // Get the current console mode
+    if (GetConsoleMode(hOut, &dwMode)) {
+        // Enable virtual terminal processing (to support ANSI escape codes)
+        dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+        SetConsoleMode(hOut, dwMode);
+    }
+}
+
 //FEN constructor
 Chess::Chess(string fen, array<int, 2> time) {
+    if (showDebugMessages) {
+        enableANSI();
+    }
     int stage = 0;
     int pos = 0;
     int enPassantXY[2] = { -1, -1 };
@@ -277,17 +293,16 @@ double Chess::evaluate() {
         -10,  0,  5,  0,  0,  0,  0,-10,
         -20,-10,-10, -5, -5,-10,-10,-20 };
 
-    if (!endgame) {
-        int counter = 0;
-        for (int pos = 0; pos < 64; pos++) {
-            if (square[pos] != 'p' && square[pos] != 'P' && square[pos] != ' ') {
-                counter++;
-            }
+    int counter = 0;
+    for (int pos = 0; pos < 64; pos++) {
+        if (square[pos] != 'p' && square[pos] != 'P' && square[pos] != ' ') {
+            counter++;
         }
-        if (counter <= 6) {
-            endgame = true;
-            initialDepth = initialDepth+2;
-        }
+    }
+    if (counter <= 6) {
+        endgame = true;
+    } else {
+        endgame = false;
     }
 
     //Iterate and add values
@@ -980,114 +995,175 @@ int Chess::depthSearch(int depth, int displayAtDepth) {
 
 //Negated mini-max alpha-beta pruning
 double Chess::negaMax(int depth, double alpha, double beta, bool taking, bool root) {
+
+    // Handle repetition check at the start
+    
+
     if (depth <= 0 && !taking) {
-        //Look for checkmate
-        if (inCheck(kingPos[whosTurn], whosTurn)) {
-            vector<Move> moves;
-            int movesFound = 0;
-            for (int pos = 0; pos < 64; pos++) {
-                moves = getPieceMoves(pos);
-                for (auto move : moves) {
-                    movesFound++;
-                }
-            }
-            if (movesFound == 0) {
-                return -10000 - depth;
+        // Look for checkmate or stalemate at depth 0
+        genMoves();
+        if (legalMoves.empty()) {
+            if (inCheck(kingPos[whosTurn], whosTurn)) {
+                // Checkmate
+                return -10000 - depth;  // Return a large negative value for checkmate
+            } else {
+                // Stalemate
+                return 0;
             }
         }
 
         return evaluate() *
             (whosTurn == 1 ? 1 : -1) *
-            (panicLevel == 2 ? 0.7 : 1) *
-            (panicLevel == 1 ? 0.9 : 1);
+            (panicLevel == 2 ? 0.8 : 1) *
+            (panicLevel == 1 ? 0.95 : 1);
     }
-    double value = -INT_MAX;
-    double newValue;
-    int movesFound = 0;
-    MoveUnmake unmake;
-    Move move;
+
     genMoves();
     vector<Move> moves = legalMoves;
+
+    // If there are no legal moves, handle checkmate or stalemate
+    if (moves.empty()) {
+        if (inCheck(kingPos[whosTurn], whosTurn)) {
+            return -10000 - depth;  // Checkmate
+        } else {
+            return 0;
+        }
+    }
+
+    //If we're searching for captures, filter out non-captures and en-passantable moves
+    
+    //if (depth <= 0 && taking) {
+    //    moves.erase(
+    //        std::remove_if(moves.begin(), moves.end(),
+    //            [this](const Move& move) { return (tolower(square[move.from])=='p' || tolower(square[move.to])=='p' || square[move.to]==' '); }),
+    //        moves.end());
+    //}
+    //if (depth <= 0 && taking) {
+    //    moves.erase(
+    //        std::remove_if(moves.begin(), moves.end(),
+    //            [this](const Move& move) { return (move.flag == NONE || move.flag == EN_PASSANTABLE); }),
+    //        moves.end());
+    //}
+
+
+    // Sort moves by their heuristic value (via compareMoves)
     std::sort(moves.begin(), moves.end(), [this](const Move& a, const Move& b) {
         return this->compareMoves(a, b);
         });
-    for (int pos = 0; pos < moves.size(); pos++) {
-        if (showDebugMessages && root) {
-            if (pos == 0) {
-                debugMoveColors.clear();
-            }
-            switch (panicLevel) {
-            case 0:
-                debugMoveColors.push_back("\033[32m");
-                break;
-            case 1:
-                debugMoveColors.push_back("\033[33m");
-                break;
-            case 2:
-                debugMoveColors.push_back("\033[31m");
-                break;
-            }
-            std::cout << "\r[";
-            for (int i = 0; i < (pos+1); i++) {
-                if (i == pos && i != moves.size()-1) {
-                    std::cout << "\033[0m" << "#";
-                } else {
-                    std::cout << debugMoveColors[i] << "#";
-                }
-            }
-            for (int i = 0; i < moves.size()-pos-1; i++) {
-                std::cout << "\033[0m" << "-";
-            }
-            std::cout << "\033[0m" << "]";
-            if (pos == moves.size() - 1) {
-                std:cout << "\n";
-            }
-        }
-        move = moves[pos];
-        if (depth <= 0 && taking) {
+
+    double value = -INT_MAX;  // Start with a very low value
+    double score;
+    string fen = "";
+    // Explore each move in the sorted list
+    for (const auto& move : moves) {
+        if (taking && depth <= 0 && (tolower(square[move.to]) == 'p' || tolower(square[move.from]) == 'p')) {
             continue;
         }
-        if (panicLevel > 0 && depth > panicDepth) {
-            depth = panicDepth;
-        }
-        movesFound++;
-        unmake={ move, enPassant, castlingRights, square[move.to] };
+        // Save the current state to undo the move later
+        MoveUnmake unmake = {move, enPassant, castlingRights, square[move.to]};
         makeMove(move);
-        string fen = genFenRepitition();
+        fen = genFenRepitition();
         positionCount[fen]++;
         if (positionCount[fen] >= 2) {
-            newValue = 0;
+            score = 0;
         } else {
-            newValue = -negaMax(depth - 1, -beta, -alpha, (panicLevel == 2 ? false : (unmake.takenPiece != ' ')));
-        }
-        if (newValue > value) {
-            value = newValue;
-            if (root) {
-                negaMaxResult = move;
-            }
+            score = -negaMax(depth - 1, -beta, -alpha, (unmake.takenPiece != ' '));
         }
         unmakeMove(unmake);
         if (--positionCount[fen] == 0) {
             positionCount.erase(fen);
         }
+        // Maximize the value for the current player
+        value = max(value, score);
         alpha = max(alpha, value);
+
+        // Alpha-Beta pruning
         if (alpha >= beta) {
-            goto outerNegaMax;
+            break;  // Cut off the remaining moves
         }
     }
-        
-        
-    if (movesFound == 0) {
-        if (inCheck(kingPos[whosTurn], whosTurn)) {
-            return -10000 - depth;
-        } else {
-            return 0;
-        }
-    }
-        
-    outerNegaMax:
     return value;
-    
+}
+
+double Chess::nullMovePruning(int depth, double alpha, double beta, bool taking) {
+    // Disable null-move pruning in positions likely to be zugzwang
+    genMoves();
+    if (endgame || legalMoves.size() < 5 || inCheck(kingPos[whosTurn], whosTurn)) {
+        return negaMax(depth, alpha, beta, taking);
+    }
+
+    // Null move: Skip the current player's turn
+    whosTurn = 1 - whosTurn;
+    int reducedDepth = max(0, depth - 2);
+    double nullEval = -negaMax(reducedDepth, -beta, -beta + 1); // Reduced depth
+    whosTurn = 1 - whosTurn;
+
+    // If the null move refutes the current position
+    if (nullEval >= beta) {
+        return beta; // Beta cutoff
+    }
+
+    // Proceed with regular alpha-beta pruning
+    return negaMax(depth, alpha, beta, taking);
+}
+
+Chess::Move Chess::iterativeDeepening() {
+    genMoves();
+    if (legalMoves.size() == 0) {
+        return { 0,0,EMPTY };
+    }
+    Move bestMove = legalMoves[0];
+    for (int depth = 1; depth <= initialDepth; ++depth) {
+        if (panicLevel != 0) {
+            break;
+        }
+        depthCeiling = depth;
+        double alpha = -INT_MAX;
+        double beta = INT_MAX;
+        double bestEval = -INT_MAX;
+        double eval = 0;
+        Move currentBestMove = bestMove;
+        string fen = "";
+        genMoves();
+        vector<Move> moves = legalMoves;
+        std::sort(moves.begin(), moves.end(), [this](const Move& a, const Move& b) {
+            return this->compareMoves(a, b);
+            });
+        for (const auto& move : moves) {
+            MoveUnmake unmake={ move, enPassant, castlingRights, square[move.to] };
+            makeMove(move);
+            fen = genFenRepitition();
+            positionCount[fen]++;
+            if (positionCount[fen] >= 2) {
+                eval = 0;
+            } else {
+                eval = -nullMovePruning(depth - 1, -beta, -alpha, (unmake.takenPiece != ' '));
+            }
+            if (--positionCount[fen] == 0) {
+                positionCount.erase(fen);
+            }
+            unmakeMove(unmake);
+            if (panicLevel != 0) {
+                //std::cout << "\nExited at depth " << depth << "\n";
+                return bestMove;
+            }
+            if (eval > bestEval) {
+                evaluation = eval*(whosTurn == 1 ? 1 : -1);
+                bestEval = eval;
+                currentBestMove = move;
+            }
+
+            alpha = max(alpha, eval);
+            if (alpha >= beta) {
+                break;
+            }
+        }
+        if (panicLevel == 0) {
+            bestMove = currentBestMove;
+        }
+    }
+    //std::cout << "\nExited at depth " << depth << "\n";
+    return bestMove;
 }
 
 //Turns the 0-63 coordinate to traditional file-column coordinates (e.g. 0=a8)
@@ -1097,6 +1173,35 @@ string Chess::posToCoords(int pos) {
     char xChar = 96 + x;
     string output = xChar + to_string(y);
     return output;
+}
+
+Chess::Move Chess::UCIToMove(string uci) {
+    if (uci.length() == 4) {
+        array<int, 2> fromto = coordsToPos(uci);
+        genMoves();
+        for (auto move : legalMoves) {
+            if (fromto[0] == move.from && fromto[1] == move.to) {
+                return move;
+            }
+        }
+    } else {
+        array<int, 2> fromto = coordsToPos(uci.substr(0,4));
+        genMoves();
+        for (auto move : legalMoves) {
+            if (fromto[0] == move.from && fromto[1] == move.to) {
+                if (uci.substr(4, 1) == "q" && move.flag == Q_PROMOTION) {
+                    return move;
+                } else if (uci.substr(4, 1) == "r" && move.flag == R_PROMOTION) {
+                    return move;
+                } else if (uci.substr(4, 1) == "b" && move.flag == B_PROMOTION) {
+                    return move;
+                } else if (uci.substr(4, 1) == "n" && move.flag == N_PROMOTION) {
+                    return move;
+                }
+            }
+        }
+    }
+    return { 0,0,EMPTY };
 }
 
 //Turns the traditional file-column coordinates coordinate to 0-63 coordinate
@@ -1147,7 +1252,8 @@ void Chess::makeBotMove(double alpha, double beta) {
 
                     thisGamesMoves += bookMove + " ";
                     makeMove(move);
-                    debugMessage("Opening book move made.");
+                    debugMessage("Opening book move made");
+                    negaMaxResult = move;
                     //Major moves that capture, castle, or promote invalidate all previous possible repititions.
                     if (move.flag != NONE && move.flag != EN_PASSANTABLE) {
                         positionCount.clear();
@@ -1161,7 +1267,8 @@ void Chess::makeBotMove(double alpha, double beta) {
     }
     negaMaxResult = { 0, 1, EMPTY };
     depth = initialDepth;
-    evaluation = negaMax(depth, -beta, -alpha, false, true)*(whosTurn == 1 ? 1 : -1);
+    negaMaxResult = iterativeDeepening();
+    //negaMaxResult = iterativeDeepening();
     if (negaMaxResult.flag == EMPTY) {
         debugMessage("Gameover");
         if (inCheck(kingPos[whosTurn], whosTurn)) {
@@ -1184,7 +1291,7 @@ void Chess::makeBotMove(double alpha, double beta) {
         positionCount.clear();
     }
 
-    positionCount[genFenRepitition()]++;
+    //positionCount[genFenRepitition()]++;
     /*
     vector <Chess> threadedChesss;
     vector <thread> threads;
@@ -1267,32 +1374,32 @@ void Chess::show() {
             square[i][j] = this->square[x];
         }
     }
-    cout << "\n";
+    std::cout << "\n";
     string BG = "\033[0;100;";
     string FG = "30m";
     string color;
     string WHITE_BG = "\033[0;107m";
     string BLACK_BG = "\033[40m";
     string letter;
-    cout << "     ";
+    std::cout << "     ";
     for (int i = 0; i < 48; i++) {
-        cout << WHITE_BG << " " << "\033[0m";
+        std::cout << WHITE_BG << " " << "\033[0m";
     }
-    cout << "\n";
-    cout << "     " << WHITE_BG << "  " << "\033[0m";
+    std::cout << "\n";
+    std::cout << "     " << WHITE_BG << "  " << "\033[0m";
     for (int i = 0; i < 44; i++) {
-        cout << " " << "\033[0m";
+        std::cout << " " << "\033[0m";
     }
-    cout << WHITE_BG << "  " << "\033[0m";
-    cout << "\n";
+    std::cout << WHITE_BG << "  " << "\033[0m";
+    std::cout << "\n";
     for (int i = 0; i < 8; i++) {
         for (int k = 0; k < 3; k++) {
             if ((k + 2) % 3 == 0) {
-                cout << "  " << to_string(8 - i) << "  ";
+                std::cout << "  " << to_string(8 - i) << "  ";
             } else {
-                cout << "     ";
+                std::cout << "     ";
             }
-            cout << WHITE_BG << "  " << BLACK_BG << "  " << "\033[0m";
+            std::cout << WHITE_BG << "  " << BLACK_BG << "  " << "\033[0m";
             for (int j = 0; j < 8; j++) {
                 if (BG == "\x1b[48;5;247m") {
                     BG = "\x1b[48;5;242m";
@@ -1305,17 +1412,17 @@ void Chess::show() {
                     FG = "\x1b[38;5;255m";
                 }
                 color = BG + FG;
-                cout << color << "  " << "\033[0m";
+                std::cout << color << "  " << "\033[0m";
                 if ((k + 2) % 3 == 0) {
-                    cout << color << (square[i][j]) << "\033[0m";
+                    std::cout << color << (square[i][j]) << "\033[0m";
                 } else {
-                    cout << color << " " << "\033[0m";
+                    std::cout << color << " " << "\033[0m";
                 }
-                cout << color << "  " << "\033[0m";
+                std::cout << color << "  " << "\033[0m";
             }
-            cout << BLACK_BG << "  " << WHITE_BG << "  " << "\033[0m";
+            std::cout << BLACK_BG << "  " << WHITE_BG << "  " << "\033[0m";
             if (k != 2) {
-                cout << "\n";
+                std::cout << "\n";
             }
         }
         if (BG == "\x1b[48;5;247m") {
@@ -1323,22 +1430,22 @@ void Chess::show() {
         } else {
             BG = "\x1b[48;5;247m";
         }
-        cout << "\n";
+        std::cout << "\n";
     }
-    cout << "     " << WHITE_BG << "  " << "\033[0m";
+    std::cout << "     " << WHITE_BG << "  " << "\033[0m";
     for (int i = 0; i < 44; i++) {
-        cout << BLACK_BG << " " << "\033[0m";
+        std::cout << BLACK_BG << " " << "\033[0m";
     }
-    cout << WHITE_BG << "  " << "\033[0m";
-    cout << "\n";
-    cout << "     ";
+    std::cout << WHITE_BG << "  " << "\033[0m";
+    std::cout << "\n";
+    std::cout << "     ";
     for (int i = 0; i < 48; i++) {
-        cout << WHITE_BG << " " << "\033[0m";
+        std::cout << WHITE_BG << " " << "\033[0m";
     }
-    cout << "\n\n";
-    cout << "         ";
+    std::cout << "\n\n";
+    std::cout << "         ";
     for (int i = 0; i < 8; i++) {
-        cout << "  " << char(64 + i + 1) << "  ";
+        std::cout << "  " << char(64 + i + 1) << "  ";
     }
-    cout << "\n\n";
+    std::cout << "\n\n";
 }

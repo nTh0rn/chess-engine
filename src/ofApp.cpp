@@ -34,7 +34,89 @@ void ofApp::setup() {
 
 //--------------------------------------------------------------
 void ofApp::update() {
+    /*
+    std::string input;
+    std::string current_fen; // Store the current position
 
+    while (std::getline(std::cin, input)) {
+        if (input.substr(0, 3) == "uci") {
+            // Respond with engine details
+            std::cout << "id name Terconari" << std::endl;
+            std::cout << "id author Nikolas_Thornton" << std::endl;
+            std::cout << "uciok" << std::endl;
+        } 
+        else if (input.substr(0, 8) == "position") {
+            board = Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+            istringstream iss(input);
+            vector<string> parameters;
+            string parameter;
+            string movesMade = "";
+            while (iss >> parameter) {
+                parameters.push_back(parameter);
+            }
+            if (parameters.size() > 2) {
+                if (movesMade.length() > 35) {
+                    board.outOfBook = true;
+                }
+                for (string uci : parameters) {
+                    if (uci == "position" || uci == "startpos" || uci == "moves") {
+                        continue;
+                    }
+                    makeMove(board.UCIToMove(uci));
+                    movesMade += uci + " ";
+                }
+            }
+            board.thisGamesMoves = movesMade;
+        } 
+        else if (input.substr(0,2) == "go") {
+            istringstream iss(input);
+            vector<string> parameters;
+            string parameter;
+            string movesMade = "";
+            while (iss >> parameter) {
+                parameters.push_back(parameter);
+            }
+            if (parameters.size() >= 2) {
+                if (parameters[1] == "wtime") {
+                    whiteTime = double(stoi(parameters[2])) / 1000;
+                    blackTime = double(stoi(parameters[4])) / 1000;
+                }
+            }
+            if (parameters.size() >= 6) {
+                if (parameters[5] == "winc") {
+                    increment = double(stoi(parameters[6]))/1000;
+                }
+            }
+            makeBotMove();
+            std::string best_move = board.posToCoords(board.negaMaxResult.from) + board.posToCoords(board.negaMaxResult.to);
+            // Compute the best move (dummy logic here)
+            if (board.negaMaxResult.flag >= 6) {
+                switch (board.negaMaxResult.flag) {
+                case Chess::Q_PROMOTION:
+                    best_move += "q";
+                    break;
+                case Chess::R_PROMOTION:
+                    best_move += "r";
+                    break;
+                case Chess::B_PROMOTION:
+                    best_move += "b";
+                    break;
+                case Chess::N_PROMOTION:
+                    best_move += "n";
+                    break;
+                }
+            }
+            std::cout << "bestmove " << best_move << std::endl;
+        } 
+        else if (input == "quit") {
+            std::exit(0);
+        } else if (input == "isready") {
+            std::cout << "readyok" << std::endl;
+        } else {
+            std::cout << "NEED TO ACCOUNT FOR " << input << std::endl;
+        }
+    }
+    */
 }
 
 //--------------------------------------------------------------
@@ -326,19 +408,19 @@ double ofApp::timeMultiplier(double timeTotal, double timeLeft) {
 
 //Keep track of bot's panic modes.
 void ofApp::timerRun(Chess* b) {
-    int initTime = int((((whosTurn == 0 ? blackTime : whiteTime) / 40) + increment)*timeMultiplier(timeSec, (whosTurn == 0 ? blackTime : whiteTime)));
+    int initTime = int((((whosTurn == 0 ? blackTime : whiteTime) / 40) + increment)/**timeMultiplier(timeSec, (whosTurn == 0 ? blackTime : whiteTime)))*/);
     int time = initTime*10;
     //cout << "\nTimer " << initTime << "\n";
-    //b->debugMessage("Panic level: " + to_string(b->panicLevel));
+    b->debugMessage("Panic level: " + to_string(b->panicLevel));
     while (time > 0 && !botMoved) {
         this_thread::sleep_for(std::chrono::milliseconds(100));
         time--;
     }
     if (!botMoved) {
         b->panicLevel++;
-        //b->debugMessage("Panic level: " + to_string(b->panicLevel));
+        b->debugMessage("Panic level: " + to_string(b->panicLevel));
     }
-    time = int(initTime/3)*10;
+    time = int(initTime)*5;
     //cout << "\nTimer2 " << initTime/3 << "\n";
     while (time > 0 && !botMoved) {
         this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -346,9 +428,9 @@ void ofApp::timerRun(Chess* b) {
     }
     if (!botMoved) {
         b->panicLevel++;
-        //b->debugMessage("Panic level: " + to_string(b->panicLevel));
+        b->debugMessage("Panic level: " + to_string(b->panicLevel));
     } else {
-        //b->debugMessage("\nExited at panic level " + to_string(b->panicLevel));
+        b->debugMessage("\nExited at panic level " + to_string(b->panicLevel));
     }
 }
 
