@@ -67,7 +67,6 @@ public:
     struct CanCastle castlingRights {false, false, false, false}; // Global castling rights
     int enPassant = -1; // En passant coordinate
     array<char, 64> square = { ' ' }; // Board pieces
-    array<int, 64> spiralCoords = { 0 }; // Spiral-coordinates, generated in genSpiral().
     vector<Move> legalMoves; // Holds all current legal moves.
     bool gameStarted; // Whether or not the game has started
     int fullMoves = 0; // Starts at 1, increases after black moves.
@@ -89,9 +88,9 @@ public:
     array <int, 2> kingPos; // 0=b, 1=w. Is an array and not struct for easy use alongside whosTurn.
     bool endgame = false; // Whether the game has reached the endgame, used for evaluation.
     bool showDebugMessages = false; // Whether or not to show debug messages
-    Move negaMaxResult{ 0,1,EMPTY };
-    unordered_map<string, int> positionCount;
-    void enableANSI();
+    Move negaMaxResult{ 0,1,EMPTY }; // The result of searching for a best move.
+    unordered_map<string, int> positionCount; //Hashmap of how frequently each position has happened.
+    void enableANSI(); 
     void show();
     string genFen();
     string genFenRepitition();
@@ -111,7 +110,6 @@ public:
     int depthSearch(int depth, int displayAtDepth = -1);
     double negaMax(int depth, double alpha, double beta, bool taking=false, bool root=false);
     void makeBotMove(double alpha, double beta);
-    void genSpiral();
     string openingBookMove();
     void debugMessage(string input);
     Move iterativeDeepening();

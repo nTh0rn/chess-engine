@@ -20,36 +20,31 @@ class ofApp : public ofBaseApp{
         void makeBotMove();
         double timeMultiplier(double timeTotal, double timeLeft);
         bool startScreen = false;
-        bool botInitMove = false;
-        int playerTurn;
-        Chess board;
-        array<ofImage, 64> visualChess;
-        ofImage bP, bR, bN, bB, bQ, bK, wP, wR, wN, wB, wQ, wK, emptySquare, wK_inverted;
-        bool pieceHeld;
-        int pieceHeldPos;
-        ofImage pieceHeldImage;
-        ofImage preMoveImage;
-        bool promoting = false;
-        int promotePos;
-        bool botThinking;
-        Chess::Move preMove { -1, -1, Chess::EMPTY };
-        double whiteTime;
-        double blackTime;
-        int gamemode = 0; // 0=Bot(w) v Bot(b), 1 = Player(w) v Bot(b), 2 = Bot(w) v Player(b), 3 = Player(w) v Player(b)
-        ofTrueTypeFont myfont;
-        bool gameover = false;
-        bool botMoved = false;
-        bool gameStarted = false;
-        int timeSec = 10*60;
-        int timeWait = timeSec / 40;
-        int timer = 0;
-        int increment = 0;
-        double* playerTime1;
-        double* playerTime2;
-        int whosTurn = 0;
-        thread threadedBoard;
-        thread timerThread;
-        thread clockThread;
+        bool botInitMove = false; // Initializes the bot's turn
+        Chess board; // The main board
+        array<ofImage, 64> visualChess; // The visual board
+        ofImage bP, bR, bN, bB, bQ, bK, wP, wR, wN, wB, wQ, wK, emptySquare, wK_inverted; // The piece iamges
+        bool pieceHeld; // Whether user is holding a piece
+        int pieceHeldPos; // Where user is holding a piece
+        ofImage pieceHeldImage; // Image of held piece
+        ofImage preMoveImage; // Image of premove piece
+        bool promoting = false; // Whether promoting
+        int promotePos; // Promoting position
+        bool botThinking; // Whether the bot is thinking (Used for disallowing user-moves)
+        bool botMoved = false; // Whether bot has moved (Used for thread-termination of timerRun())
+        Chess::Move preMove { -1, -1, Chess::EMPTY }; // Premove
+        double whiteTime; // White's time in seconds
+        double blackTime; // Black's time in seconds
+        int gamemode = 4; // 0=Bot(w) v Bot(b), 1 = Player(w) v Bot(b), 2 = Bot(w) v Player(b), 3 = Player(w) v Player(b), 4 = UCI Mode (For lichess-bot.py)
+        ofTrueTypeFont myfont; // Default font
+        bool gameover = false; // If game has ended
+        bool gameStarted = false; // If game has started
+        int timeSec = 10*60; // Generic time for both sides in seconds
+        int increment = 0; // Increment in seconds
+        int whosTurn = 0; // Interface-specific whosTurn
+        thread threadedBoard; // Bot's thread
+        thread timerThread; // Bot's timer thread for panic-levels
+        thread clockThread; // Clock thread
         void keyPressed(int key);
         void keyReleased(int key);
         void mouseMoved(int x, int y );

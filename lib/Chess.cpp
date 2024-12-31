@@ -12,14 +12,11 @@ void Chess::debugMessage(string input) {
 //Default constructor
 Chess::Chess() {};
 
+//Allow colors in external consoles
 void Chess::enableANSI() {
-    // Get the handle for the standard output (Console)
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
     DWORD dwMode = 0;
-
-    // Get the current console mode
     if (GetConsoleMode(hOut, &dwMode)) {
-        // Enable virtual terminal processing (to support ANSI escape codes)
         dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
         SetConsoleMode(hOut, dwMode);
     }
@@ -149,8 +146,7 @@ string Chess::genFen() {
         }
     }
 
-    genSpiral();
-    fen += (whosTurn == 1) ? " w " : " b "; // Whos turn
+    fen += (whosTurn == 1) ? " w " : " b "; //Whos turn
 
     //Castling rights
     if (castlingRights.wK) { fen += "K"; }
@@ -189,7 +185,7 @@ string Chess::genFenRepitition() {
             skip = 0;
         }
     }
-    fen += (whosTurn == 1) ? " w " : " b "; // Whos turn
+    fen += (whosTurn == 1) ? " w " : " b "; //Whos turn
 
     //Castling rights
     if (castlingRights.wK) { fen += "K"; }
@@ -200,43 +196,20 @@ string Chess::genFenRepitition() {
     return fen;
 }
 
-//Generate the spiral coordinate array
-void Chess::genSpiral() {
-    int dx = 1, dy = 1, signx = -1, signy = -1;
-    int pos = 36;
-    int index = 0;
-    spiralCoords[index] = pos;
-    this_thread::sleep_for(std::chrono::milliseconds(1000));
-    while (pos != 7) {
-        for (int i = 0; i < dx; i++) {
-            pos += 1 * signx;
-            index++;
-            spiralCoords[index] = pos;
-            if (pos == 7) {
-                return;
-            }
-        }
-        for (int i = 0; i < dy; i++) {
-            pos += 1 * signy*8;
-            index++;
-            spiralCoords[index] = pos;
-        }
-        dx++, dy++;
-        signx*= -1, signy *= -1;
-    }
-}
-
 //Return the evaluation of the game from white's perspective
 double Chess::evaluate() {
+
     double output = 0;
     int whitePos;
     int blackPos;
+    int wBCount = 0;
+    int bBCount = 0;
 
     //How important the piece-square tables are.
-    int weight = 200;
+    double weight = 150;
 
     //Simplified piece-square tables
-    double pawn[64] = { 0,  0,  0,  0,  0,  0,  0,  0,
+    int pawn[64] = { 0,  0,  0,  0,  0,  0,  0,  0,
         50, 50, 50, 50, 50, 50, 50, 50,
         10, 10, 20, 30, 30, 20, 10, 10,
         5,  5, 10, 25, 25, 10,  5,  5,
@@ -244,7 +217,17 @@ double Chess::evaluate() {
         5, -5,-10,  0,  0,-10, -5,  5,
         5, 10, 10,-20,-20, 10, 10,  5,
         0,  0,  0,  0,  0,  0,  0,  0 };
-    double rook[64] = { 0,  0,  0,  0,  0,  0,  0,  0,
+
+    int pawn_eg[64] = { 0,  0,  0,  0,  0,  0,  0,  0,
+        75, 50, 50, 50, 50, 50, 50, 75,
+        35, 35, 35, 35, 35, 35, 35, 35,
+        25,  25, 25, 25, 25, 25,  25,  25,
+        0,  0,  0, 20, 20,  0,  0,  0,
+        -30, -20,-20,  -20,  -20,-20, -20,  -30,
+        -50, -50, -50,-50,-50, -50, -50,  -50,
+        0,  0,  0,  0,  0,  0,  0,  0 };
+
+    int rook[64] = { 0,  0,  0,  0,  0,  0,  0,  0,
         5, 10, 10, 10, 10, 10, 10,  5,
         -5,  0,  0,  0,  0,  0,  0, -5,
         -5,  0,  0,  0,  0,  0,  0, -5,
@@ -252,7 +235,8 @@ double Chess::evaluate() {
         -5,  0,  0,  0,  0,  0,  0, -5,
         -5,  0,  0,  0,  0,  0,  0, -5,
         0,  0,  0,  5,  5,  0,  0,  0 };
-    double bishop[64] = { -20,-10,-10,-10,-10,-10,-10,-20,
+
+    int bishop[64] = { -20,-10,-10,-10,-10,-10,-10,-20,
         -10,  0,  0,  0,  0,  0,  0,-10,
         -10,  0,  5, 10, 10,  5,  0,-10,
         -10,  5,  5, 10, 10,  5,  5,-10,
@@ -260,7 +244,8 @@ double Chess::evaluate() {
         -10, 10, 10, 10, 10, 10, 10,-10,
         -10,  5,  0,  0,  0,  0,  5,-10,
         -20,-10,-10,-10,-10,-10,-10,-20 };
-    double knight[64] = { -50,-40,-30,-30,-30,-30,-40,-50,
+
+    int knight[64] = { -50,-40,-30,-30,-30,-30,-40,-50,
         -40,-20,  0,  0,  0,  0,-20,-40,
         -30,  0, 10, 15, 15, 10,  0,-30,
         -30,  5, 15, 20, 20, 15,  5,-30,
@@ -268,7 +253,8 @@ double Chess::evaluate() {
         -30,  5, 10, 15, 15, 10,  5,-30,
         -40,-20,  0,  5,  5,  0,-20,-40,
         -50,-40,-30,-30,-30,-30,-40,-50 };
-    double king[64] = { -30,-40,-40,-50,-50,-40,-40,-30,
+
+    int king[64] = { -30,-40,-40,-50,-50,-40,-40,-30,
         -30,-40,-40,-50,-50,-40,-40,-30,
         -30,-40,-40,-50,-50,-40,-40,-30,
         -30,-40,-40,-50,-50,-40,-40,-30,
@@ -276,7 +262,8 @@ double Chess::evaluate() {
         -10,-20,-20,-20,-20,-20,-20,-10,
         20, 20,  0,  0,  0,  0, 20, 20,
         20, 30, 10,  0,  0, 10, 30, 20 };
-    double king_eg[64] = { -50,-40,-30,-20,-20,-30,-40,-50,
+
+    int king_eg[64] = { -50,-40,-30,-20,-20,-30,-40,-50,
         -30,-20,-10,  0,  0,-10,-20,-30,
         -30,-10, 20, 30, 30, 20,-10,-30,
         -30,-10, 30, 40, 40, 30,-10,-30,
@@ -284,7 +271,8 @@ double Chess::evaluate() {
         -30,-10, 20, 30, 30, 20,-10,-30,
         -30,-30,  0,  0,  0,  0,-30,-30,
         -50,-30,-30,-30,-30,-30,-30,-50 };
-    double queen[64] = { -20,-10,-10, -5, -5,-10,-10,-20,
+
+    int queen[64] = { -20,-10,-10, -5, -5,-10,-10,-20,
         -10,  0,  0,  0,  0,  0,  0,-10,
         -10,  0,  5,  5,  5,  5,  0,-10,
         -5,  0,  5,  5,  5,  5,  0, -5,
@@ -293,18 +281,6 @@ double Chess::evaluate() {
         -10,  0,  5,  0,  0,  0,  0,-10,
         -20,-10,-10, -5, -5,-10,-10,-20 };
 
-    int counter = 0;
-    for (int pos = 0; pos < 64; pos++) {
-        if (square[pos] != 'p' && square[pos] != 'P' && square[pos] != ' ') {
-            counter++;
-        }
-    }
-    if (counter <= 6) {
-        endgame = true;
-    } else {
-        endgame = false;
-    }
-
     //Iterate and add values
     for (int col = 0; col < 8; col++) {
         for (int row = 0; row < 8; row++) {
@@ -312,52 +288,86 @@ double Chess::evaluate() {
             blackPos = ((7 - col) * 8) + row;
             switch (square[whitePos]) {
             case 'p':
-                output += -pawn[blackPos]/weight + -1;
+                output += -((endgame ? pawn_eg[blackPos] : pawn[blackPos])/weight) + -1;
                 break;
             case 'r':
-                output += -rook[blackPos]/weight + -5;
+                output += -(rook[blackPos] / weight) + -5;
                 break;
             case 'b':
-                output += -bishop[blackPos]/weight + -3;
+                output += -(bishop[blackPos]/weight) + -3;
+                bBCount++;
                 break;
             case 'n':
-                output += -knight[blackPos]/weight + -3;
+                output += -(knight[blackPos]/weight) + -3;
                 break;
             case 'k':
-                output += -(endgame ? king[whitePos] : king_eg[whitePos]) /weight + -100000;
+                output += -((endgame ? king_eg[blackPos] : king[blackPos]) /weight) + -100000;
                 break;
             case 'q':
-                output += -queen[blackPos]/weight + -9;
+                output += -(queen[blackPos]/weight) + -9;
                 break;
             case 'P':
-                output += pawn[whitePos]/weight + 1;
+                output += ((endgame ? pawn_eg[whitePos] : pawn[whitePos])/weight) + 1;
                 break;
             case 'R':
-                output += rook[whitePos]/weight + 5;
+                output += (rook[whitePos]/weight) + 5;
                 break;
             case 'B':
-                output += bishop[whitePos]/weight + 3;
+                output += (bishop[whitePos]/weight) + 3;
+                wBCount++;
                 break;
             case 'N':
-                output += knight[whitePos]/weight + 3;
+                output += (knight[whitePos]/weight) + 3;
                 break;
             case 'K':
-                
-                output += (endgame ? king[whitePos] : king_eg[whitePos])/weight + 100000;
+                output += ((endgame ? king_eg[whitePos] : king[whitePos])/weight) + 100000;
                 break;
             case 'Q':
-                output += queen[whitePos]/weight + 9;
+                output += (queen[whitePos]/weight) + 9;
                 break;
             }
         }
     }
 
-    //if (inCheck(kingPos[0], 0)) {
-    //    output += 1;
-    //} else if (inCheck(kingPos[1], 1)) {
-    //    output += -1;
-    //}
+    if (wBCount == 2) {
+        output += 0.2;
+    }
+    if (bBCount == 2) {
+        output += -0.2;
+    }
 
+    //Stacked/passed pawn detection / endgame detection.
+    int pieceCount = 0;
+    int bPCount = 0;
+    int wPCount = 0;
+    int pos = 7;
+    for (int i = 0; i < 64; i++) {
+        if (square[pos] == 'p') {
+            bPCount++;
+        } else if (square[pos] == 'P') {
+            wPCount++;
+        } else if (square[pos] != ' ') {
+            pieceCount++;
+        }
+        pos += 8;
+        if (pos > 63) {
+            output += (wPCount - bPCount) * 0.3;
+            if (bPCount >= 2) {
+                output += 0.25*(bPCount - 1);
+            }
+            if (wPCount >= 2) {
+                output += -0.25*(wPCount - 1);
+            }
+            wPCount = 0;
+            bPCount = 0;
+            pos -= 65;
+        }
+    }
+    if (pieceCount <= 6) {
+        endgame = true;
+    } else {
+        endgame = false;
+    }
     return output;
 }
 
@@ -374,15 +384,19 @@ bool Chess::kingSafe(Move move) {
 //Whether a specific coordinate is under attack.
 bool Chess::inCheck(int pos, int turn) {
     vector<Move> moves;
-    array<char, 6> enemyPieces = { (turn == 1 ? 'r' : 'R'), (turn == 1 ? 'b' : 'B'), (turn == 1 ? 'q' : 'Q'), (turn == 1 ? 'n' : 'N') , (turn == 1 ? 'k' : 'K') , (turn == 1 ? 'p' : 'P')};
-    int dir;
+    array<char, 6> enemyPieces = { 'R', 'B', 'Q', 'N', 'K', 'P'};
+    if (turn == 1) {
+        enemyPieces = { 'r', 'b', 'q', 'n', 'k', 'p'};
+    }
     int amt;
     int prevPos;
 
-    amt = 1;
-    dir = -1;
-    for (int i = 0; i < 2; i++) {
-        while (int((pos + (dir * amt)) / 8) == int(pos / 8) && pos + (dir * amt) >= 0 && pos + (dir * amt) < 64) {
+    //Non-diagonal sliding moves
+    for (int dir : {-1, 1, -8, 8}) {
+        amt = 1;
+        while (((dir == -1 || dir == 1) ? 
+            (int((pos + (dir * amt)) / 8) == int(pos / 8) && pos + (dir * amt) >= 0 && pos + (dir * amt) < 64) : //Horizontal conditions
+            (pos + (dir * amt) >= 0 && pos + (dir * amt) < 64))) { //Vertical conditions
             if (square[pos + (dir * amt)] == ' ') { //Empty space
                 amt += 1;
             } else if (square[pos + (dir * amt)] == enemyPieces[0] || square[pos + (dir * amt)] == enemyPieces[2]) { //Enemy piece
@@ -391,56 +405,22 @@ bool Chess::inCheck(int pos, int turn) {
                 break;
             }
         }
-        //Right-side horizontal moves
-        amt = 1;
-        dir = 1;
     }
-    //Upper vertical moves
-    amt = 1;
-    dir = -8;
-    for (int i = 0; i < 2; i++) {
-        while (pos + (dir * amt) >= 0 && pos + (dir * amt) < 64) {
+
+    //Diagonal sliding moves
+    for (int dir : { -9, 9, -7, 7 }) {
+        amt = 1;
+        prevPos = pos;
+        while (pos + (dir * amt) >= 0 && pos + (dir * amt) < 64 && abs(((pos + (dir * amt)) % 8) - (prevPos % 8)) == 1) {
             if (square[pos + (dir * amt)] == ' ') { //Empty space
+                prevPos = pos + (dir * amt);
                 amt += 1;
-            } else if (square[pos + (dir * amt)] == enemyPieces[0] || square[pos + (dir * amt)] == enemyPieces[2]) {//Enemy piece
+            } else if (square[pos + (dir * amt)] == enemyPieces[1] || square[pos + (dir * amt)] == enemyPieces[2]) { //Enemy piece
                 return true;
             } else { //Own piece
                 break;
             }
         }
-        //Lower vertical moves
-        amt = 1;
-        dir = 8;
-    }
-
-
-    //Diagonal sliding moves
-    amt = 1;
-    dir = -9;
-    prevPos = pos;
-    for (int i = 0; i < 2; i++) {
-        //Upper diagonal moves
-        for (int j = 0; j < 2; j++) {
-            while (pos + (dir * amt) >= 0 && pos + (dir * amt) < 64 && abs(((pos + (dir * amt)) % 8) - (prevPos % 8)) == 1) {
-                if (square[pos + (dir * amt)] == ' ') { //Empty space
-                    prevPos = pos + (dir * amt);
-                    amt += 1;
-                } else if (square[pos + (dir * amt)] == enemyPieces[1] || square[pos + (dir * amt)] == enemyPieces[2]) { //Enemy piece
-                    return true;
-                } else { //Own piece
-                    break;
-                }
-            }
-            //Lower diagonal moves
-            amt = 1;
-            dir = (dir == -9) ? 9 : 7;
-            prevPos = pos;
-        }
-        //Swap diagonal
-        amt = 1;
-        dir = -7;
-        prevPos = pos;
-
     }
 
     //Check for king checking
@@ -464,8 +444,7 @@ bool Chess::inCheck(int pos, int turn) {
     }
 
     //Check for pawns checking
-    dir = (turn == 0 ? 9 : -9);
-    for (int i = 0; i < 2; i++) {
+    for (int dir : { 9*(turn == 0 ? 1 : -1), 7*(turn == 0 ? 1 : -1) }) {
         if (pos + dir >= 0 && pos + dir < 64) {
             if (abs(((pos + dir) % 8) - (pos % 8)) == 1) {
                 if (square[pos + dir] == enemyPieces[5]) {
@@ -473,8 +452,8 @@ bool Chess::inCheck(int pos, int turn) {
                 }
             }
         }
-        dir = (turn == 0 ? 7 : -7);
     }
+
     return false;
 }
 
@@ -490,28 +469,30 @@ void Chess::genMoves() {
         }
 
         switch (tolower(square[pos])) {
-        case 'p':
+        case 'p': //Pawn moves
             pieceMoves = genPawnMoves(pos);
             break;
-        case 'r':
+        case 'r': //Non-diagonal sliding moves
             pieceMoves = genSlidingMoves(pos, 0);
             break;
-        case 'b':
+        case 'b': //Diagonal sliding moves
             pieceMoves = genSlidingMoves(pos, 1);
             break;
-        case 'n':
+        case 'n': //Use knight's relative movement coordinates
             pieceMoves = genPositionalMoves(pos, {-17, -15, -10, -6, 6, 10, 15, 17});
             break;
-        case 'q':
+        case 'q': //Combine both types of sliding moves
             pieceMoves = genSlidingMoves(pos, 0);
             legalMoves.insert(legalMoves.end(), pieceMoves.begin(), pieceMoves.end());
             pieceMoves = genSlidingMoves(pos, 1);
             break;
-        case 'k':
+        case 'k': //Use king's relative movement coordinates
             kingPos[whosTurn] = pos;
             pieceMoves = genPositionalMoves(pos, {-9, -8, -7, -1, 1, 7, 8, 9}, true);
             break;
         }
+
+        //Combine all legal moves.
         legalMoves.insert(legalMoves.end(), pieceMoves.begin(), pieceMoves.end());
     }
 }
@@ -529,25 +510,24 @@ vector<Chess::Move> Chess::getPieceMoves(int pos) {
     }
 
     switch (tolower(square[pos])) {
-    case 'p':
+    case 'p': //Pawn moves
         movess = genPawnMoves(pos);
         break;
-    case 'r':
+    case 'r': //Non-diagonal sliding moves
         movess = genSlidingMoves(pos, 0);
         break;
-    case 'b':
+    case 'b': //Diagonal sliding moves
         movess = genSlidingMoves(pos, 1);
         break;
-    case 'n':
+    case 'n': //Use knight's relative movement coordinates
         movess = genPositionalMoves(pos, {-17, -15, -10, -6, 6, 10, 15, 17});
         break;
-    case 'q':
-        //Combine both types of sliding moves
+    case 'q': //Combine both types of sliding moves
         movess = genSlidingMoves(pos, 0);
         pieceMoves = genSlidingMoves(pos, 1);
         movess.insert(movess.end(), pieceMoves.begin(), pieceMoves.end());
         break;
-    case 'k':
+    case 'k': //Use king's relative movement coordinates
         kingPos[whosTurn] = pos;
         movess = genPositionalMoves(pos, {-9, -8, -7, -1, 1, 7, 8, 9}, true);
         break;
@@ -628,32 +608,17 @@ vector<Chess::Move> Chess::genSlidingMoves(int pos, int type) {
     int amt;
     int dir;
     int prevPos;
+
+    //Two different types of sliding moves, non-diagonal and diagonal.
     switch (type) {
+
     //Horizontal/vertical sliding moves
     case 0:
-
-        for(int dir : {-1, 1}) {
+        for(int dir : {-1, 1, -8, 8}) {
             amt = 1;
-            while (int((pos + (dir*amt)) / 8) == int(pos / 8) && pos+(dir*amt) >= 0 && pos+(dir*amt) < 64) {
-                if (square[pos + (dir*amt)] == ' ') { //Empty space
-                    if (kingSafe({ pos, pos + (dir * amt), NONE })) {
-                        moves.push_back({ pos, pos + (dir * amt), NONE });
-                    }
-                    amt += 1;
-                } else if ((square[pos+(dir*amt)] < 97 ? 1 : 0) != whosTurn) { //Enemy piece
-                    if (kingSafe({ pos, pos + (dir * amt), CAPTURE })) {
-                        moves.push_back({ pos, pos + (dir * amt), CAPTURE });
-                    }
-                    break;
-                } else { //Own piece
-                    break;
-                }
-            }
-        }
-        //Upper vertical moves
-        for(int dir : {-8, 8}) {
-            amt = 1;
-            while (pos + (dir*amt) >= 0 && pos + (dir*amt) < 64) {
+            while ((dir == -1 || dir == 1 ?
+                (int((pos + (dir*amt)) / 8) == int(pos / 8) && pos+(dir*amt) >= 0 && pos+(dir*amt) < 64) : //Horizontal conditions
+                (pos + (dir*amt) >= 0 && pos + (dir*amt) < 64))) { //Vertical conditions
                 if (square[pos + (dir*amt)] == ' ') { //Empty space
                     if (kingSafe({ pos, pos + (dir * amt), NONE })) {
                         moves.push_back({ pos, pos + (dir * amt), NONE });
@@ -670,42 +635,32 @@ vector<Chess::Move> Chess::genSlidingMoves(int pos, int type) {
             }
         }
         break;
+
     //Diagonal sliding moves
     case 1:
-        amt = 1;
-        dir = -9;
-        prevPos = pos;
-        for (int i = 0; i < 2; i++) {
-            //Upper diagonal moves
-            for (int j = 0; j < 2; j++) {
-                while (pos + (dir * amt) >= 0 && pos + (dir * amt) < 64 && abs(((pos+(dir*amt)) % 8) - (prevPos % 8)) == 1) {
-                    if (square[pos + (dir*amt)] == ' ') { //Empty space
-                        if (kingSafe({ pos, pos + (dir * amt), NONE })) {
-                            moves.push_back({ pos, pos + (dir * amt), NONE });
-                        }
-                        prevPos = pos + (dir * amt);
-                        amt += 1;
-                    } else if ((square[pos+(dir*amt)] < 97 ? 1 : 0) != whosTurn) { //Enemy piece
-                        if (kingSafe({ pos, pos + (dir * amt), CAPTURE })) {
-                            moves.push_back({ pos, pos + (dir * amt), CAPTURE });
-                        }
-                        break;
-                    } else { //Own piece
-                        break;
-                    }
-                }
-                //Lower diagonal moves
-                amt = 1;
-                dir = (dir == -9) ? 9 : 7;
-                prevPos = pos;
-            }
-            //Swap diagonal
+        for (int dir : {-9, 9, -7, 7}) {
             amt = 1;
-            dir = -7;
             prevPos = pos;
+            while (pos + (dir * amt) >= 0 && pos + (dir * amt) < 64 && abs(((pos + (dir * amt)) % 8) - (prevPos % 8)) == 1) {
+                if (square[pos + (dir * amt)] == ' ') { //Empty space
+                    if (kingSafe({ pos, pos + (dir * amt), NONE })) {
+                        moves.push_back({ pos, pos + (dir * amt), NONE });
+                    }
+                    prevPos = pos + (dir * amt);
+                    amt += 1;
+                } else if ((square[pos + (dir * amt)] < 97 ? 1 : 0) != whosTurn) { //Enemy piece
+                    if (kingSafe({ pos, pos + (dir * amt), CAPTURE })) {
+                        moves.push_back({ pos, pos + (dir * amt), CAPTURE });
+                    }
+                    break;
+                } else { //Own piece
+                    break;
+                }
+            }
         }
         break;
     }
+
     return moves;
 }
 
@@ -808,6 +763,8 @@ string Chess::openingBookMove() {
 //Makes a move using the from square, to square, and move flag.
 void Chess::makeMove(Move move) {
     enPassant = -1;
+
+    //Castling rights
     switch (square[move.from]) {
     case 'r':
         switch (move.from) {
@@ -846,6 +803,8 @@ void Chess::makeMove(Move move) {
     default:
         break;
     }
+
+    //How to undo depends on type of move
     switch (move.flag) {
     //Non-capturing move
     case NONE:
@@ -972,16 +931,16 @@ int Chess::depthSearch(int depth, int displayAtDepth) {
                 std::cout << posToCoords(move.from) << posToCoords(move.to);
                 if (move.flag >= 6) {
                         switch (move.flag) {
-                        case 6:
+                        case Q_PROMOTION:
                             std::cout << "q";
                             break;
-                        case 7:
+                        case R_PROMOTION:
                             std::cout << "r";
                             break;
-                        case 8:
+                        case B_PROMOTION:
                             std::cout << "b";
                             break;
-                        case 9:
+                        case N_PROMOTION:
                             std::cout << "n";
                             break;
                         }
@@ -996,173 +955,185 @@ int Chess::depthSearch(int depth, int displayAtDepth) {
 //Negated mini-max alpha-beta pruning
 double Chess::negaMax(int depth, double alpha, double beta, bool taking, bool root) {
 
-    // Handle repetition check at the start
-    
-
-    if (depth <= 0 && !taking) {
-        // Look for checkmate or stalemate at depth 0
-        genMoves();
-        if (legalMoves.empty()) {
-            if (inCheck(kingPos[whosTurn], whosTurn)) {
-                // Checkmate
-                return -10000 - depth;  // Return a large negative value for checkmate
-            } else {
-                // Stalemate
-                return 0;
-            }
-        }
-
-        return evaluate() *
-            (whosTurn == 1 ? 1 : -1) *
-            (panicLevel == 2 ? 0.8 : 1) *
-            (panicLevel == 1 ? 0.95 : 1);
-    }
-
+    //Check for checkmate/stalemate
     genMoves();
-    vector<Move> moves = legalMoves;
-
-    // If there are no legal moves, handle checkmate or stalemate
-    if (moves.empty()) {
+    if (legalMoves.empty()) {
         if (inCheck(kingPos[whosTurn], whosTurn)) {
-            return -10000 - depth;  // Checkmate
+            return -10000 - depth;
         } else {
             return 0;
         }
     }
 
-    //If we're searching for captures, filter out non-captures and en-passantable moves
-    
-    //if (depth <= 0 && taking) {
-    //    moves.erase(
-    //        std::remove_if(moves.begin(), moves.end(),
-    //            [this](const Move& move) { return (tolower(square[move.from])=='p' || tolower(square[move.to])=='p' || square[move.to]==' '); }),
-    //        moves.end());
-    //}
-    //if (depth <= 0 && taking) {
-    //    moves.erase(
-    //        std::remove_if(moves.begin(), moves.end(),
-    //            [this](const Move& move) { return (move.flag == NONE || move.flag == EN_PASSANTABLE); }),
-    //        moves.end());
-    //}
+    //Base case, returns relative evaluation
+    if (depth <= 0 && !taking) {
+        return evaluate() *
+            (whosTurn == 1 ? 1 : -1);
+    }
 
-
-    // Sort moves by their heuristic value (via compareMoves)
+    //Sort moves by estimated importance per compareMoves()
+    vector<Move> moves = legalMoves;
     std::sort(moves.begin(), moves.end(), [this](const Move& a, const Move& b) {
         return this->compareMoves(a, b);
         });
 
-    double value = -INT_MAX;  // Start with a very low value
+    //Standard NegaMax
+    double value = -INT_MAX;
     double score;
     string fen = "";
-    // Explore each move in the sorted list
     for (const auto& move : moves) {
+
+        //Skip past-depth-0-evaluation if moves isnt non-pawn capturing non-pawn.
         if (taking && depth <= 0 && (tolower(square[move.to]) == 'p' || tolower(square[move.from]) == 'p')) {
             continue;
         }
-        // Save the current state to undo the move later
+
+        //Remember the move and make it
         MoveUnmake unmake = {move, enPassant, castlingRights, square[move.to]};
         makeMove(move);
+
+        //Stalemate by repitition checks
         fen = genFenRepitition();
         positionCount[fen]++;
         if (positionCount[fen] >= 2) {
             score = 0;
         } else {
+
+            //Continue recursion to enemy's move
             score = -negaMax(depth - 1, -beta, -alpha, (unmake.takenPiece != ' '));
         }
+
+        //Unmake the move and undo repitition checks
         unmakeMove(unmake);
         if (--positionCount[fen] == 0) {
             positionCount.erase(fen);
         }
-        // Maximize the value for the current player
+
+        //Maximize score
         value = max(value, score);
         alpha = max(alpha, value);
 
-        // Alpha-Beta pruning
+        //Prune if terrible
         if (alpha >= beta) {
-            break;  // Cut off the remaining moves
+            break;
         }
     }
+
     return value;
 }
 
+//Makes "null moves" to quickly prune bad positions or continue with negaMax().
 double Chess::nullMovePruning(int depth, double alpha, double beta, bool taking) {
-    // Disable null-move pruning in positions likely to be zugzwang
+
+    //If null moves are too risky, continue with NegaMax.
     genMoves();
     if (endgame || legalMoves.size() < 5 || inCheck(kingPos[whosTurn], whosTurn)) {
         return negaMax(depth, alpha, beta, taking);
     }
 
-    // Null move: Skip the current player's turn
-    whosTurn = 1 - whosTurn;
-    int reducedDepth = max(0, depth - 2);
-    double nullEval = -negaMax(reducedDepth, -beta, -beta + 1); // Reduced depth
-    whosTurn = 1 - whosTurn;
+    whosTurn = 1 - whosTurn; // Skip the current move
+    double nullEval = -negaMax(max(0, depth - 2), -beta, -beta + 1);
+    whosTurn = 1 - whosTurn; // Undo skip of move.
 
-    // If the null move refutes the current position
+    //If terrible, return.
     if (nullEval >= beta) {
-        return beta; // Beta cutoff
+        return beta;
     }
 
-    // Proceed with regular alpha-beta pruning
+    //If not terrible, continue with NegaMax.
     return negaMax(depth, alpha, beta, taking);
 }
 
+//Basic iterative deepending, calling nullMovePruning() for first depth.
 Chess::Move Chess::iterativeDeepening() {
+    int depthReached = 0; //Used for debugging
+
+    //Check for checkmate/stalemate.
     genMoves();
     if (legalMoves.size() == 0) {
         return { 0,0,EMPTY };
+    } else if (legalMoves.size() == 1) {
+        return legalMoves[0];
     }
+
+    //The best move, initialized to whatever's first in case nullMovePruning() prunes too harshly.
     Move bestMove = legalMoves[0];
+
+    //Generate and sort moves by estimated importance per compareMoves()
+    genMoves();
+    vector<Move> moves = legalMoves;
+    std::sort(moves.begin(), moves.end(), [this](const Move& a, const Move& b) {
+        return this->compareMoves(a, b);
+        });
+
+    //Iterate through depths.
     for (int depth = 1; depth <= initialDepth; ++depth) {
+
+        //Escape if too panicked.
         if (panicLevel != 0) {
             break;
         }
-        depthCeiling = depth;
+
+        //Initialize move evaluations.
         double alpha = -INT_MAX;
         double beta = INT_MAX;
         double bestEval = -INT_MAX;
         double eval = 0;
         Move currentBestMove = bestMove;
         string fen = "";
-        genMoves();
-        vector<Move> moves = legalMoves;
-        std::sort(moves.begin(), moves.end(), [this](const Move& a, const Move& b) {
-            return this->compareMoves(a, b);
-            });
+
+        //Iterate through moves
         for (const auto& move : moves) {
+
+            //Remember and make the move
             MoveUnmake unmake={ move, enPassant, castlingRights, square[move.to] };
             makeMove(move);
+
+            //Stalemate by repitition checks
             fen = genFenRepitition();
             positionCount[fen]++;
             if (positionCount[fen] >= 2) {
                 eval = 0;
             } else {
+
+                //Continue via null move pruning.
                 eval = -nullMovePruning(depth - 1, -beta, -alpha, (unmake.takenPiece != ' '));
             }
+
+            //Unmake the move and undo repitition checks
             if (--positionCount[fen] == 0) {
                 positionCount.erase(fen);
             }
             unmakeMove(unmake);
+
+            //Escape if too panicked.
             if (panicLevel != 0) {
-                //std::cout << "\nExited at depth " << depth << "\n";
+                debugMessage("Depth reached: " + to_string(depthReached));
                 return bestMove;
             }
+
+            //Update the best move
             if (eval > bestEval) {
                 evaluation = eval*(whosTurn == 1 ? 1 : -1);
                 bestEval = eval;
                 currentBestMove = move;
             }
 
+            //Maximize and check for possible skips.
             alpha = max(alpha, eval);
             if (alpha >= beta) {
                 break;
             }
         }
+
+        //Update best move if not panicked.
         if (panicLevel == 0) {
+            depthReached = depth;
             bestMove = currentBestMove;
         }
     }
-    //std::cout << "\nExited at depth " << depth << "\n";
+
+    debugMessage("Depth reached: " + to_string(depthReached));
     return bestMove;
 }
 
@@ -1175,6 +1146,7 @@ string Chess::posToCoords(int pos) {
     return output;
 }
 
+//Convert UCI (e.g. e2e4) to struct Move (e.g. {from=52, to=36, flag=NONE})
 Chess::Move Chess::UCIToMove(string uci) {
     if (uci.length() == 4) {
         array<int, 2> fromto = coordsToPos(uci);
@@ -1231,6 +1203,8 @@ array<int, 2> Chess::coordsToPos(string coords) {
 
 //Makes a move for the bot
 void Chess::makeBotMove(double alpha, double beta) {
+
+    //For debugging
     if (whosTurn == 0) {
         debugMessage("\nBLACK MOVING");
     } else {
@@ -1249,26 +1223,31 @@ void Chess::makeBotMove(double alpha, double beta) {
                         visualGamesMoves += "\033[30m\033[47m";
                     }
                     visualGamesMoves += bookMove + "\033[0m ";
-
                     thisGamesMoves += bookMove + " ";
                     makeMove(move);
                     debugMessage("Opening book move made");
                     negaMaxResult = move;
+
                     //Major moves that capture, castle, or promote invalidate all previous possible repititions.
                     if (move.flag != NONE && move.flag != EN_PASSANTABLE) {
                         positionCount.clear();
                     }
-
                     positionCount[genFenRepitition()]++;
+
                     return;
                 }
             }
         }
     }
+
+    //Initialize values
     negaMaxResult = { 0, 1, EMPTY };
     depth = initialDepth;
+
+    //Get best move
     negaMaxResult = iterativeDeepening();
-    //negaMaxResult = iterativeDeepening();
+
+    //Check if no move is available.
     if (negaMaxResult.flag == EMPTY) {
         debugMessage("Gameover");
         if (inCheck(kingPos[whosTurn], whosTurn)) {
@@ -1278,90 +1257,24 @@ void Chess::makeBotMove(double alpha, double beta) {
         }
         return;
     }
+
+    //For debugging visuals
     if (whosTurn == 1) {
         visualGamesMoves += "\033[30m\033[47m";
     }
     visualGamesMoves += posToCoords(negaMaxResult.from) + posToCoords(negaMaxResult.to) + "\033[0m ";
+
+    //For book-move detection
     thisGamesMoves += posToCoords(negaMaxResult.from) + posToCoords(negaMaxResult.to) + " ";
+
+    //Make the best move
     makeMove(negaMaxResult);
-    
 
     //Major moves that capture, castle, or promote invalidate all previous possible repititions.
     if (negaMaxResult.flag != NONE && negaMaxResult.flag != EN_PASSANTABLE) {
         positionCount.clear();
     }
-
-    //positionCount[genFenRepitition()]++;
-    /*
-    vector <Chess> threadedChesss;
-    vector <thread> threads;
-    vector<Move> moves = {};
-    Move bestMove = { -1, -1, EMPTY };
-    Move nextBestMoveRepitition = { -1, -1, EMPTY };
-    Move nextBestMove = { -1, -1, EMPTY };
-    double init_value = -DBL_MAX;
-    double value = init_value;
-    double bestValue = value;
-    
-    genMoves();
-    moves = legalMoves;
-    std::sort(moves.begin(), moves.end(), [this](const Move& a, const Move& b) {
-        return this->compareMoves(a, b);
-        });
-    if (moves.size() != 1) {
-        for (auto move : moves) {
-            debugMessage("Looking at move " + posToCoords(move.from) + " to " + posToCoords(move.to) + " type " + to_string(move.flag));
-            MoveUnmake unmake{ move, enPassant, castlingRights, square[move.to] };
-            makeMove(move);
-
-            value = max(value, -negaMax(depth - 1, -beta, -alpha, (move.flag == CAPTURE || move.flag == EN_PASSANT)));
-            alpha = max(alpha, value);
-            unmakeMove(unmake);
-            if (value > bestValue) {
-                bestValue = value;
-                if (bestMove.from == -1) {
-                    bestMove = move;
-                    nextBestMoveRepitition = bestMove;
-                } else {
-                    nextBestMoveRepitition = bestMove;
-                    bestMove = move;
-                }
-                debugMessage("Best move is " + posToCoords(move.from) + " to " + posToCoords(move.to) + " type " + to_string(move.flag));
-            }
-        }
-    } else {
-        value = 0;
-        bestMove = moves[0];
-    }
-    
-
-    if (value != init_value && gameStatus == -1) {
-        debugMessage("Making move " + posToCoords(bestMove.from) + " " + posToCoords(bestMove.to) + ", Value: " + to_string(value));
-        string moveUCI = posToCoords(bestMove.from) + posToCoords(bestMove.to);
-        int counter = 0;
-        for (auto move : previousMoves) {
-            if (moveUCI == move) {
-                counter++;
-            }
-        }
-        previousMoves.insert(previousMoves.begin(), moveUCI);
-        if (previousMoves.size() > 15) {
-            previousMoves.pop_back();
-        }
-
-        thisGamesMoves += posToCoords(bestMove.from) + posToCoords(bestMove.to) + " ";
-        if (counter >= 2) {
-            debugMessage("Repitition, making next best move.");
-            makeMove(nextBestMoveRepitition);
-
-        } else {
-            makeMove(bestMove);
-        }
-        
-    } else {
-        debugMessage("Cannot make move.");
-    }
-    */
+    positionCount[genFenRepitition()]++;
 }
 
 //Shows the current state of the board in ascii.

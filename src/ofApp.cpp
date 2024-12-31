@@ -3,13 +3,13 @@
 //--------------------------------------------------------------
 void ofApp::setup() {
     board = Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    //board = Chess("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10 ");
     //board = Chess("rnbqk1nr/pppp1ppp/8/2b1p3/2B1P3/5Q2/PPPP1PPP/RNB1K1NR b KQkq - 0 1");
     //board = Chess("1K6/7r/2k5/8/8/8/8/8 w - - 0 1");
     //board = Chess("rnb1kbnr/pppppppp/8/8/2P5/8/PP2PPPP/RNBqKBNR w KQkq - 0 1");
     //board = Chess("r5rk/5p1p/5R2/4B3/8/8/7P/7K w");
     board.genMoves();
     board.debugMessage(board.genFen());
-    gamemode = 0;
     whosTurn = board.whosTurn;
 
     //Initialize images
@@ -29,94 +29,92 @@ void ofApp::setup() {
     wK_inverted.load("images/wK_inverted.png");
 
     myfont.load("fonts/arial.ttf", 32);
-    clockThread = thread(&ofApp::clockRun, this);
+    if (gamemode != 4) {
+        clockThread = thread(&ofApp::clockRun, this);
+    }
 }
 
 //--------------------------------------------------------------
 void ofApp::update() {
-    /*
-    std::string input;
-    std::string current_fen; // Store the current position
+    if (gamemode == 4) {
+        std::string input;
+        std::string current_fen;
 
-    while (std::getline(std::cin, input)) {
-        if (input.substr(0, 3) == "uci") {
-            // Respond with engine details
-            std::cout << "id name Terconari" << std::endl;
-            std::cout << "id author Nikolas_Thornton" << std::endl;
-            std::cout << "uciok" << std::endl;
-        } 
-        else if (input.substr(0, 8) == "position") {
-            board = Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-            istringstream iss(input);
-            vector<string> parameters;
-            string parameter;
-            string movesMade = "";
-            while (iss >> parameter) {
-                parameters.push_back(parameter);
-            }
-            if (parameters.size() > 2) {
-                if (movesMade.length() > 35) {
-                    board.outOfBook = true;
+        while (std::getline(std::cin, input)) {
+            if (input.substr(0, 3) == "uci") {
+                std::cout << "id name Terconari" << std::endl;
+                std::cout << "id author nthorn" << std::endl;
+                std::cout << "uciok" << std::endl;
+            } else if (input.substr(0, 8) == "position") {
+                board = Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+                istringstream iss(input);
+                vector<string> parameters;
+                string parameter;
+                string movesMade = "";
+                while (iss >> parameter) {
+                    parameters.push_back(parameter);
                 }
-                for (string uci : parameters) {
-                    if (uci == "position" || uci == "startpos" || uci == "moves") {
-                        continue;
+                if (parameters.size() > 2) {
+                    if (movesMade.length() > 35) {
+                        board.outOfBook = true;
                     }
-                    makeMove(board.UCIToMove(uci));
-                    movesMade += uci + " ";
+                    for (string uci : parameters) {
+                        if (uci == "position" || uci == "startpos" || uci == "moves") {
+                            continue;
+                        }
+                        makeMove(board.UCIToMove(uci));
+                        movesMade += uci + " ";
+                    }
                 }
-            }
-            board.thisGamesMoves = movesMade;
-        } 
-        else if (input.substr(0,2) == "go") {
-            istringstream iss(input);
-            vector<string> parameters;
-            string parameter;
-            string movesMade = "";
-            while (iss >> parameter) {
-                parameters.push_back(parameter);
-            }
-            if (parameters.size() >= 2) {
-                if (parameters[1] == "wtime") {
-                    whiteTime = double(stoi(parameters[2])) / 1000;
-                    blackTime = double(stoi(parameters[4])) / 1000;
+                board.thisGamesMoves = movesMade;
+            } else if (input.substr(0, 2) == "go") {
+                istringstream iss(input);
+                vector<string> parameters;
+                string parameter;
+                string movesMade = "";
+                while (iss >> parameter) {
+                    parameters.push_back(parameter);
                 }
-            }
-            if (parameters.size() >= 6) {
-                if (parameters[5] == "winc") {
-                    increment = double(stoi(parameters[6]))/1000;
+                if (parameters.size() >= 2) {
+                    if (parameters[1] == "wtime") {
+                        whiteTime = double(stoi(parameters[2])) / 1000;
+                        blackTime = double(stoi(parameters[4])) / 1000;
+                    }
                 }
-            }
-            makeBotMove();
-            std::string best_move = board.posToCoords(board.negaMaxResult.from) + board.posToCoords(board.negaMaxResult.to);
-            // Compute the best move (dummy logic here)
-            if (board.negaMaxResult.flag >= 6) {
-                switch (board.negaMaxResult.flag) {
-                case Chess::Q_PROMOTION:
-                    best_move += "q";
-                    break;
-                case Chess::R_PROMOTION:
-                    best_move += "r";
-                    break;
-                case Chess::B_PROMOTION:
-                    best_move += "b";
-                    break;
-                case Chess::N_PROMOTION:
-                    best_move += "n";
-                    break;
+                if (parameters.size() >= 6) {
+                    if (parameters[5] == "winc") {
+                        increment = double(stoi(parameters[6])) / 1000;
+                    }
                 }
+                makeBotMove();
+                std::string best_move = board.posToCoords(board.negaMaxResult.from) + board.posToCoords(board.negaMaxResult.to);
+                if (board.negaMaxResult.flag >= 6) {
+                    switch (board.negaMaxResult.flag) {
+                    case Chess::Q_PROMOTION:
+                        best_move += "q";
+                        break;
+                    case Chess::R_PROMOTION:
+                        best_move += "r";
+                        break;
+                    case Chess::B_PROMOTION:
+                        best_move += "b";
+                        break;
+                    case Chess::N_PROMOTION:
+                        best_move += "n";
+                        break;
+                    }
+                }
+                std::cout << "bestmove " << best_move << std::endl;
+            } else if (input == "quit") {
+                std::exit(0);
+            } else if (input == "isready") {
+                std::cout << "readyok" << std::endl;
+            } else {
+                std::cout << "NEED TO ACCOUNT FOR '" << input << "'." <<std::endl;
             }
-            std::cout << "bestmove " << best_move << std::endl;
-        } 
-        else if (input == "quit") {
-            std::exit(0);
-        } else if (input == "isready") {
-            std::cout << "readyok" << std::endl;
-        } else {
-            std::cout << "NEED TO ACCOUNT FOR " << input << std::endl;
         }
     }
-    */
+    
 }
 
 //--------------------------------------------------------------
@@ -408,7 +406,7 @@ double ofApp::timeMultiplier(double timeTotal, double timeLeft) {
 
 //Keep track of bot's panic modes.
 void ofApp::timerRun(Chess* b) {
-    int initTime = int((((whosTurn == 0 ? blackTime : whiteTime) / 40) + increment)/**timeMultiplier(timeSec, (whosTurn == 0 ? blackTime : whiteTime)))*/);
+    int initTime = int((((whosTurn == 0 ? blackTime : whiteTime) / 50) + increment)/**timeMultiplier(timeSec, (whosTurn == 0 ? blackTime : whiteTime)))*/);
     int time = initTime*10;
     //cout << "\nTimer " << initTime << "\n";
     b->debugMessage("Panic level: " + to_string(b->panicLevel));
