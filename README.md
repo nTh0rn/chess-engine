@@ -4,7 +4,7 @@
 <h1 align="center">Terconari Chess Engine<h6>("Attempt thrice"→Latin→"Ter conari")</h6></h1>
 
   <p align="center">
-    An entirely custom <a href="https://github.com/lichess-bot-devs/lichess-bot">lichess-bot</a> compatible chess engine made in C++
+    A built-from-scratch <a href="https://github.com/lichess-bot-devs/lichess-bot">lichess-bot</a> compatible chess engine made in C++
   </p>
 
   <p align="center">
