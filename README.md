@@ -109,6 +109,8 @@ Custom opening books compatible with Terconari can be made using [opening-book-P
 ### Lichess Bot
 After compiling, the contents of `/bin/` can easily be moved to the `/engines/` folder of [lichess-bot](https://github.com/lichess-bot-devs/lichess-bot) per its documentation.
 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 <!-- LICENSE -->
 ## License
 
