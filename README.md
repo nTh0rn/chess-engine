@@ -8,7 +8,7 @@
   </p>
 
   <p align="center">
-<img src="https://nthorn.com/images/chess-engine/pgn-to-uci.png" width="500">
+<img src="https://nthorn.com/images/chess-engine/example-game.gif" width="500">
 </p>
 </div>
 
