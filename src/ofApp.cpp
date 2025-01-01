@@ -59,7 +59,7 @@ void ofApp::update() {
                 if (parameters.size() > 2) {
 
                     //Disable book moves if more than 8 moves made.
-                    if (movesMade.length() > 35) {
+                    if (parameters.size() > 19) {
                         board.outOfBook = true;
                     }
 
