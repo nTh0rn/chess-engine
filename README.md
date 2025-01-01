@@ -52,7 +52,7 @@ Terconari is a chess-bot with a GUI made in C++ and [openFrameworks](https://ope
    - Legal move generation tested against Stockfish's perft results across tens-of-millions of positions
  * Evaluation via material/positional information
    - Accounts for bishop pairs, passed pawns, and stacked pawns
-   - Uses modified [Simplified Piece-Square Tables](https://www.chessprogramming.org/Piece-Square_Tables) with a custom pawn-endgame table
+   - Uses modified [Simplified Piece-Square Tables](https://www.chessprogramming.org/Simplified_Evaluation_Function) with a custom pawn-endgame table
  * Negated Mini-Max with Alpha Beta Pruning
    - Non-pawn captures are always calculated an additional depth
  * Time-dependant Iterative Deepening
@@ -61,7 +61,7 @@ Terconari is a chess-bot with a GUI made in C++ and [openFrameworks](https://ope
  * Null Move Pruning
    - Does not run in positions that are in-check, have <= 4 legal moves, or have <= 6 total non-pawn pieces
 
-A fully technical article about this project is coming soon to my website, [nthorn.com](https://nthorn.com)
+An in-depth technical article about this project is coming soon to my website, [nthorn.com](https://nthorn.com)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
