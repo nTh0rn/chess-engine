@@ -3,62 +3,70 @@
 //--------------------------------------------------------------
 void ofApp::setup() {
     board = Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    //board = Chess("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10 ");
-    //board = Chess("rnbqk1nr/pppp1ppp/8/2b1p3/2B1P3/5Q2/PPPP1PPP/RNB1K1NR b KQkq - 0 1");
-    //board = Chess("1K6/7r/2k5/8/8/8/8/8 w - - 0 1");
-    //board = Chess("rnb1kbnr/pppppppp/8/8/2P5/8/PP2PPPP/RNBqKBNR w KQkq - 0 1");
-    //board = Chess("r5rk/5p1p/5R2/4B3/8/8/7P/7K w");
     board.genMoves();
     board.debugMessage(board.genFen());
     whosTurn = board.whosTurn;
 
-    //Initialize images
-    bP.load("images/bP.png");
-    bR.load("images/bR.png");
-    bN.load("images/bN.png");
-    bB.load("images/bB.png");
-    bQ.load("images/bQ.png");
-    bK.load("images/bK.png");
-    wP.load("images/wP.png");
-    wR.load("images/wR.png");
-    wN.load("images/wN.png");
-    wB.load("images/wB.png");
-    wQ.load("images/wQ.png");
-    wK.load("images/wK.png");
-    emptySquare.load("images/Empty.png");
-    wK_inverted.load("images/wK_inverted.png");
-
-    myfont.load("fonts/arial.ttf", 32);
     if (gamemode != 4) {
+        //Initialize images
+        bP.load("images/bP.png");
+        bR.load("images/bR.png");
+        bN.load("images/bN.png");
+        bB.load("images/bB.png");
+        bQ.load("images/bQ.png");
+        bK.load("images/bK.png");
+        wP.load("images/wP.png");
+        wR.load("images/wR.png");
+        wN.load("images/wN.png");
+        wB.load("images/wB.png");
+        wQ.load("images/wQ.png");
+        wK.load("images/wK.png");
+        emptySquare.load("images/Empty.png");
+        wK_inverted.load("images/wK_inverted.png");
+
+        mainFont.load("fonts/arial.ttf", 32);
         clockThread = thread(&ofApp::clockRun, this);
     }
 }
 
-//--------------------------------------------------------------
+//Only used for gamemode 4, lichess-bot implementation.
 void ofApp::update() {
     if (gamemode == 4) {
         std::string input;
         std::string current_fen;
 
+        //Detect input
         while (std::getline(std::cin, input)) {
             if (input.substr(0, 3) == "uci") {
                 std::cout << "id name Terconari" << std::endl;
                 std::cout << "id author nthorn" << std::endl;
                 std::cout << "uciok" << std::endl;
+
+            // Initialize board / run through moves made so far
             } else if (input.substr(0, 8) == "position") {
                 board = Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
                 istringstream iss(input);
                 vector<string> parameters;
                 string parameter;
                 string movesMade = "";
+
+                //Split input
                 while (iss >> parameter) {
                     parameters.push_back(parameter);
                 }
+
+                //More than just initialization
                 if (parameters.size() > 2) {
+
+                    //Disable book moves if more than 8 moves made.
                     if (movesMade.length() > 35) {
                         board.outOfBook = true;
                     }
+
+                    //Iterate through moves
                     for (string uci : parameters) {
+
+                        //Skip if initialization
                         if (uci == "position" || uci == "startpos" || uci == "moves") {
                             continue;
                         }
@@ -67,14 +75,20 @@ void ofApp::update() {
                     }
                 }
                 board.thisGamesMoves = movesMade;
+
+            //Start move generation
             } else if (input.substr(0, 2) == "go") {
                 istringstream iss(input);
                 vector<string> parameters;
                 string parameter;
                 string movesMade = "";
+
+                //Split input
                 while (iss >> parameter) {
                     parameters.push_back(parameter);
                 }
+
+                //Set time control
                 if (parameters.size() >= 2) {
                     if (parameters[1] == "wtime") {
                         whiteTime = double(stoi(parameters[2])) / 1000;
@@ -86,7 +100,10 @@ void ofApp::update() {
                         increment = double(stoi(parameters[6])) / 1000;
                     }
                 }
+
                 makeBotMove();
+
+                //Account for promotion.
                 std::string best_move = board.posToCoords(board.negaMaxResult.from) + board.posToCoords(board.negaMaxResult.to);
                 if (board.negaMaxResult.flag >= 6) {
                     switch (board.negaMaxResult.flag) {
@@ -105,10 +122,16 @@ void ofApp::update() {
                     }
                 }
                 std::cout << "bestmove " << best_move << std::endl;
+
+            //End of game
             } else if (input == "quit") {
                 std::exit(0);
+
+            //Confirm bot's ready
             } else if (input == "isready") {
                 std::cout << "readyok" << std::endl;
+
+            //Unaccounted for case
             } else {
                 std::cout << "NEED TO ACCOUNT FOR '" << input << "'." <<std::endl;
             }
@@ -117,17 +140,23 @@ void ofApp::update() {
     
 }
 
-//--------------------------------------------------------------
+//Main logic for gamemodes 0-3.
 void ofApp::draw() {
+
+    //Start screen not yet implemented.
     if (startScreen) {
 
     } else {
+
+        //Start bot move if botvbot or botvplayer.
         if ((gamemode == 0 || gamemode == 2) && botInitMove == false) {
             threadedBoard = thread(&ofApp::makeBotMove, this);
             botInitMove = true;
         }
     
         drawBoard();
+
+        //End of bot move, execute premoves/start next bot move.
         if (!botThinking && threadedBoard.joinable()) {
             threadedBoard.join();
             if (board.evaluation > 0) {
@@ -180,9 +209,9 @@ void ofApp::drawClock() {
     string bt = btMinutes + ":" + btSeconds.substr(0,5);
     string wt = wtMinutes + ":" + wtSeconds.substr(0,5);
     ofSetColor(255);
-    myfont.drawString(bt, 685, 70);
+    mainFont.drawString(bt, 685, 70);
     ofSetColor(0);
-    myfont.drawString(wt, 685, 600);
+    mainFont.drawString(wt, 685, 600);
     ofSetColor(255);
     wK_inverted.draw(695, 100, 150, 150);
     ofSetColor(255);
@@ -190,13 +219,10 @@ void ofApp::drawClock() {
     ofSetColor(0, 100);
     ofDrawRectangle(640, 320 * (1-whosTurn), 260, 320);
 
-
     ofSetColor(255);
     ofDrawRectangle(640, 0, 10, 640);
     ofSetColor(0);
     ofDrawRectangle(640, 0, 10, 640 * (1/(1+pow(1.2,board.evaluation))));
-
-    
 
     ofSetColor(255);
     ofDrawRectangle(650, 0, 10, 640);
@@ -395,18 +421,10 @@ void ofApp::clockRun() {
     }
 }
 
-double ofApp::timeMultiplier(double timeTotal, double timeLeft) {
-    if (timeLeft / timeTotal > 0.8) {
-        return 1;
-    } else {
-        double x = (timeLeft / timeTotal) * 10;
-        return pow(x, 1.1) / (1 + pow(x, 1.1));
-    }
-}
 
 //Keep track of bot's panic modes.
 void ofApp::timerRun(Chess* b) {
-    int initTime = int((((whosTurn == 0 ? blackTime : whiteTime) / 50) + increment)/**timeMultiplier(timeSec, (whosTurn == 0 ? blackTime : whiteTime)))*/);
+    int initTime = int((((whosTurn == 0 ? blackTime : whiteTime) / 50) + increment));
     int time = initTime*10;
     //cout << "\nTimer " << initTime << "\n";
     b->debugMessage("Panic level: " + to_string(b->panicLevel));

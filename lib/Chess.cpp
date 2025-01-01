@@ -162,7 +162,7 @@ string Chess::genFen() {
     return fen;
 }
 
-//Generate FEN of current board
+//Generate FEN of current board without en passant, half moves, or full moves.
 string Chess::genFenRepitition() {
     string fen = "";
     int skip = 0;
@@ -196,7 +196,7 @@ string Chess::genFenRepitition() {
     return fen;
 }
 
-//Return the evaluation of the game from white's perspective
+// Evaluate the current position from white's perspective (+ good for white, - good for black)
 double Chess::evaluate() {
 
     double output = 0;
@@ -329,6 +329,7 @@ double Chess::evaluate() {
         }
     }
 
+    //Bishop pair detection
     if (wBCount == 2) {
         output += 0.2;
     }
@@ -953,7 +954,7 @@ int Chess::depthSearch(int depth, int displayAtDepth) {
 }
 
 //Negated mini-max alpha-beta pruning
-double Chess::negaMax(int depth, double alpha, double beta, bool taking, bool root) {
+double Chess::negaMax(int depth, double alpha, double beta, bool taking) {
 
     //Check for checkmate/stalemate
     genMoves();
