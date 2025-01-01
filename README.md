@@ -30,7 +30,14 @@
         <li><a href="#installation">Installation</a></li>
       </ul>
     </li>
-    <li><a href="#usage">Usage</a></li>
+    <li><a href="#usage">Usage</a>
+    <ul>
+        <li><a href="#opening-book">Opening Book</a></li>
+      </ul>
+    <ul>
+        <li><a href="#lichess-bot">Lichess Bot</a></li>
+      </ul>
+    </li>
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
   </ol>
