@@ -96,21 +96,21 @@ public:
     /**
     * Generate FEN of current board
     * 
-    * @return the full FEN of the current board
+    * @return A string of the full FEN of the current board
     */
     string genFen();
 
     /**
     * Generate FEN of the current board for use in three-fold repitition detection.
     * 
-    * @return the partial FEN of the current board without en passant, full moves, and half moves.
+    * @return A string of the partial FEN of the current board without en passant, full moves, and half moves.
     */
     string genFenRepitition();
 
     /**
     * Evaluate the current position from white's perspective
     * 
-    * @return The current evaluation (+ good for white, - good for black)
+    * @return A double of the current evaluation (+ good for white, - good for black)
     */
     double evaluate();
 
@@ -118,7 +118,7 @@ public:
     * Turns the 0-63 coordinate to file-column coordinate (e.g. 0=a8)
     * 
     * @param pos An integer 0-63 coordinate.
-    * @return the UCI coordinate.
+    * @return A string of the UCI coordinate.
     */
     string posToCoords(int pos);
 
@@ -134,7 +134,7 @@ public:
     * Convert UCI to struct Move (e.g. e2e4={from=52, to=36, flag=NONE})
     * 
     * @param uci A string UCI coordinate
-    * @return the integer 0-63 coordinate.
+    * @return A Move of the converted UCI coordinate.
     */
     Move UCIToMove(string uci);
 
