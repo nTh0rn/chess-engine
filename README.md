@@ -48,11 +48,11 @@
 <!-- ABOUT -->
 ## About
 
-Terconari is a chess-bot with a GUI made in C++ and [openFrameworks](https://openframeworks.cc/), compatible with [lichess-bot](https://github.com/lichess-bot-devs/lichess-bot), and often live and playable at [lichess.org/Terconari](https://lichess.org/@/Terconari).
+Terconari is a built-from-scratch chess-bot/chess-engine made in C++ with a GUI built ontop of [openFrameworks](https://openframeworks.cc/), compatible with [lichess-bot](https://github.com/lichess-bot-devs/lichess-bot), and often live and playable at [lichess.org/Terconari](https://lichess.org/@/Terconari).
 
 ### Technical Specifications
  * Lichess-style GUI for local-only BotvBot, PlayervBot (premove functionality), or PlayervPlayer usage
- * GUI-less UCI mode compatible with [lichess-bot](https://github.com/lichess-bot-devs/lichess-bot)
+ * GUI-free UCI mode for compatibility with [lichess-bot](https://github.com/lichess-bot-devs/lichess-bot)
  * Opening book functionality
    - Default opening book has 244,117 games up to 16 plys deep, see [Usage→Opening Book](#opening-book) for more details
  * Make/Unmake legal move verification
