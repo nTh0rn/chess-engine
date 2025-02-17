@@ -64,7 +64,7 @@ Terconari is a built-from-scratch chess-bot/chess-engine made in C++ with a GUI 
    - Non-pawn captures are always calculated an additional depth
  * Time-dependant Iterative Deepening
    - Attempts a depth of 6 plys
-   - Escapes after `(timeLeft/50)/increment` seconds
+   - Escapes after `(timeLeft/50)+increment` seconds
  * Null Move Pruning
    - Does not run in positions that are in-check, have <= 4 legal moves, or have <= 6 total non-pawn pieces
 
