@@ -44,9 +44,17 @@ public:
 
     // Move, holds from, to, and flag
     struct Move {
+        friend bool operator==(const Move& lhs, const Move& rhs)
+        {
+            return (lhs.from == rhs.from &&
+                lhs.to == rhs.to &&
+                lhs.flag == rhs.flag);
+        }
         int from;
         int to;
         MoveFlag flag;
+
+
     };
 
     // Holds Move, en passant position, castling rights, and the piece taken.
@@ -66,8 +74,9 @@ public:
     int halfMoves = 0; // Moves since last pawn move (50 move rule)
     int whosTurn = 0; // whosTurn
     int panicLevel = 0; // How rushed the bot is, managed by driver class since its usually time-dependant.
-    int initialDepth = 6; // Initial depth value
+    int initialDepth = 8; // Initial depth value
     int depth = initialDepth; // Negamax depth value.
+    int depthReached = 0;
     int gameStatus = -1; // -1=playing, 0=black won, 1=white won, 2=stalemate
     double evaluation = 0; // Evaluation at-depth reached in bot move.
     string thisGamesMoves; // Moves made this game
@@ -81,6 +90,8 @@ public:
     Move negaMaxResult{ 0,1,EMPTY }; // The result of searching for a best move.
     unordered_map<string, int> positionCount; //Hashmap of how frequently each position has happened.
 
+
+    
     /**
     * Enables colors in external terminals
     * 
@@ -262,9 +273,10 @@ public:
     Move iterativeDeepening();
 
     /**
-    * Makes "null moves" to quickly prune bad positions.
+    * Makes a "null move" for the opponent after being called by iterativeDeepening(). This
+    * is effective because it is assumed that passing a turn is always a bad move, so if the
+    * position is still bad after the enemy passes the turn, then it is pruned.
     * 
-    * @note calls negaMax() if the position isn't to be pruned.
     * @param depth An integer of what depth to search to.
     * @param alpha A double of what the best-case evaluation is.
     * @param beta A double of what the worst-case evaluation is.

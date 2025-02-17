@@ -3,6 +3,7 @@
 //--------------------------------------------------------------
 void ofApp::setup() {
     board = Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    //board = Chess("r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 1");
     board.genMoves();
     board.debugMessage(board.genFen());
     whosTurn = board.whosTurn;
@@ -424,7 +425,7 @@ void ofApp::clockRun() {
 
 //Keep track of bot's panic modes.
 void ofApp::timerRun(Chess* b) {
-    int initTime = int((((whosTurn == 0 ? blackTime : whiteTime) / 50) + increment));
+    int initTime = int((((whosTurn == 0 ? blackTime : whiteTime) / 40) + increment));
     int time = initTime*10;
     //cout << "\nTimer " << initTime << "\n";
     b->debugMessage("Panic level: " + to_string(b->panicLevel));

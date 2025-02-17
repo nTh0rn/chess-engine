@@ -39,8 +39,8 @@ class ofApp : public ofBaseApp{
         ofTrueTypeFont mainFont; // Default font
         bool gameover = false; // If game has ended
         bool gameStarted = false; // If game has started
-        int timeSec = 10*60; // Generic time for both sides in seconds
-        int increment = 3; // Increment in seconds
+        int timeSec = 60; // Generic time for both sides in seconds
+        int increment = 0; // Increment in seconds
         int whosTurn = 0; // Interface-specific whosTurn
         thread threadedBoard; // Bot's thread
         thread timerThread; // Bot's timer thread for panic-levels

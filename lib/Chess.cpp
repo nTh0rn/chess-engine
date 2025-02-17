@@ -956,6 +956,10 @@ int Chess::depthSearch(int depth, int displayAtDepth) {
 //Negated mini-max alpha-beta pruning
 double Chess::negaMax(int depth, double alpha, double beta, bool taking) {
 
+    if (panicLevel == 2 && depthReached > 3) {
+        return 0;
+    }
+    
     //Check for checkmate/stalemate
     genMoves();
     if (legalMoves.empty()) {
@@ -996,7 +1000,7 @@ double Chess::negaMax(int depth, double alpha, double beta, bool taking) {
         //Stalemate by repitition checks
         fen = genFenRepitition();
         positionCount[fen]++;
-        if (positionCount[fen] >= 2) {
+        if (positionCount[fen] == 3) {
             score = 0;
         } else {
 
@@ -1068,8 +1072,20 @@ Chess::Move Chess::iterativeDeepening() {
         });
 
     //Iterate through depths.
-    for (int depth = 1; depth <= initialDepth; ++depth) {
+    for (int depth = 3; depth <= initialDepth; ++depth) {
+        depthReached = depth;
+        
+        //Prioritize the last iteration's best found move if it isn't already first.
+        if (depth > 3) {
 
+            //Delete best move from it's current position.
+            moves.erase(remove(moves.begin(), moves.end(), bestMove), moves.end());
+
+            //Insert best move to front of vector.
+            moves.insert(moves.begin(), bestMove);
+        }
+        
+        
         //Escape if too panicked.
         if (panicLevel != 0) {
             break;
