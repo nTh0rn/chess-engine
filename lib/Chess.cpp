@@ -1000,7 +1000,7 @@ double Chess::negaMax(int depth, double alpha, double beta, bool taking) {
         //Stalemate by repitition checks
         fen = genFenRepitition();
         positionCount[fen]++;
-        if (positionCount[fen] == 3) {
+        if (positionCount[fen] >= 2) {
             score = 0;
         } else {
 
@@ -1051,7 +1051,6 @@ double Chess::nullMovePruning(int depth, double alpha, double beta, bool taking)
 
 //Basic iterative deepending, calling nullMovePruning() for first depth.
 Chess::Move Chess::iterativeDeepening() {
-    int depthReached = 0; //Used for debugging
 
     //Check for checkmate/stalemate.
     genMoves();
@@ -1073,7 +1072,6 @@ Chess::Move Chess::iterativeDeepening() {
 
     //Iterate through depths.
     for (int depth = 3; depth <= initialDepth; ++depth) {
-        depthReached = depth;
         
         //Prioritize the last iteration's best found move if it isn't already first.
         if (depth > 3) {

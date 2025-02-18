@@ -74,7 +74,7 @@ public:
     int halfMoves = 0; // Moves since last pawn move (50 move rule)
     int whosTurn = 0; // whosTurn
     int panicLevel = 0; // How rushed the bot is, managed by driver class since its usually time-dependant.
-    int initialDepth = 8; // Initial depth value
+    int initialDepth = 10; // Initial depth value
     int depth = initialDepth; // Negamax depth value.
     int depthReached = 0;
     int gameStatus = -1; // -1=playing, 0=black won, 1=white won, 2=stalemate
@@ -86,7 +86,7 @@ public:
     vector<string> previousMoves; // The previous moves made.
     array <int, 2> kingPos; // 0=b, 1=w. Is an array and not struct for easy use alongside whosTurn.
     bool endgame = false; // Whether the game has reached the endgame, used for evaluation.
-    bool showDebugMessages = true; // Whether or not to show debug messages
+    bool showDebugMessages = false; // Whether or not to show debug messages
     Move negaMaxResult{ 0,1,EMPTY }; // The result of searching for a best move.
     unordered_map<string, int> positionCount; //Hashmap of how frequently each position has happened.
 

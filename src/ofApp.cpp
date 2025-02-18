@@ -64,6 +64,10 @@ void ofApp::update() {
                         board.outOfBook = true;
                     }
 
+                    if(parameters.size() == 2) {
+                        timeSec = -1;
+                    }
+
                     //Iterate through moves
                     for (string uci : parameters) {
 
@@ -94,6 +98,9 @@ void ofApp::update() {
                     if (parameters[1] == "wtime") {
                         whiteTime = double(stoi(parameters[2])) / 1000;
                         blackTime = double(stoi(parameters[4])) / 1000;
+                        if(timeSec == -1) {
+                            timeSec = whiteTime;
+                        }
                     }
                 }
                 if (parameters.size() >= 6) {
@@ -427,6 +434,10 @@ void ofApp::clockRun() {
 void ofApp::timerRun(Chess* b) {
     int initTime = int((((whosTurn == 0 ? blackTime : whiteTime) / 40) + increment));
     int time = initTime*10;
+    if ((whosTurn == 0 ? blackTime : whiteTime) <= increment){
+        b->panicLevel = 2;
+        time = 0;
+    }
     //cout << "\nTimer " << initTime << "\n";
     b->debugMessage("Panic level: " + to_string(b->panicLevel));
     while (time > 0 && !botMoved) {
@@ -437,7 +448,11 @@ void ofApp::timerRun(Chess* b) {
         b->panicLevel++;
         b->debugMessage("Panic level: " + to_string(b->panicLevel));
     }
-    time = int(initTime)*5;
+    time = int(initTime)*3;
+    if ((whosTurn == 0 ? blackTime : whiteTime) <= increment){
+        b->panicLevel = 2;
+        time = 0;
+    }
     //cout << "\nTimer2 " << initTime/3 << "\n";
     while (time > 0 && !botMoved) {
         this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -446,9 +461,8 @@ void ofApp::timerRun(Chess* b) {
     if (!botMoved) {
         b->panicLevel++;
         b->debugMessage("Panic level: " + to_string(b->panicLevel));
-    } else {
-        b->debugMessage("\nExited at panic level " + to_string(b->panicLevel));
     }
+    b->debugMessage("\nExited at panic level " + to_string(b->panicLevel));
 }
 
 //Make the bot move.
