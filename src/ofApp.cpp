@@ -76,6 +76,7 @@ void ofApp::update() {
                             continue;
                         }
                         makeMove(board.UCIToMove(uci));
+                        
                         movesMade += uci + " ";
                     }
                 }
@@ -429,10 +430,23 @@ void ofApp::clockRun() {
     }
 }
 
+double ofApp::timeFactor(double x) {
+    double term1 = 0.3 + (1 - 0.3) * (1 / (1 + exp(-7 * (x - 15.7))));
+    double term2 = 1.5 / (pow(x - 17.7, 1.6) + exp(1));
+    return std::max(term1 + term2, 0.4);
+}
+
+
 
 //Keep track of bot's panic modes.
 void ofApp::timerRun(Chess* b) {
-    int initTime = int((((whosTurn == 0 ? blackTime : whiteTime) / 40) + increment));
+    for (int i = 0; i < 40; i++) {
+        cout << i << ":" << timeFactor((double)i) << ", ";
+    }
+    int initTime = int((((timeSec) / 40) + increment)*timeFactor(b->halfMoves));
+    b->debugMessage("Time to think: " + to_string(initTime));
+    b->debugMessage("Extra time: " + to_string(initTime / 3.0));
+    b->debugMessage("Time factor: " + to_string(timeFactor(b->halfMoves)));
     int time = initTime*10;
     if ((whosTurn == 0 ? blackTime : whiteTime) <= increment){
         b->panicLevel = 2;

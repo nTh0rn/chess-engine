@@ -15,6 +15,7 @@ class ofApp : public ofBaseApp{
         void updateVisualChess(); // Update the array that holds visual board information
         void makeMove(Chess::Move move); // Execute a move on board.
         void tryMove(Chess::Move move); // Attempt a move on board.
+        double timeFactor(double x);
         void timerRun(Chess* b); // Bot's move timer, controls panic levels.
         void clockRun(); // The game's clock, declares winner if time runs out.
         void drawClock(); // Draw the clock itself.
@@ -39,8 +40,9 @@ class ofApp : public ofBaseApp{
         ofTrueTypeFont mainFont; // Default font
         bool gameover = false; // If game has ended
         bool gameStarted = false; // If game has started
-        int timeSec = 60; // Generic time for both sides in seconds
+        int timeSec = 420; // Generic time for both sides in seconds
         int increment = 0; // Increment in seconds
+        //int timeMultipliers[40] = {0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.4,0.4,0.4,0.4,0.4,};
         int whosTurn = 0; // Interface-specific whosTurn
         thread threadedBoard; // Bot's thread
         thread timerThread; // Bot's timer thread for panic-levels

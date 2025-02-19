@@ -763,6 +763,7 @@ string Chess::openingBookMove() {
 
 //Makes a move using the from square, to square, and move flag.
 void Chess::makeMove(Move move) {
+    halfMoves++;
     enPassant = -1;
 
     //Castling rights
@@ -863,6 +864,7 @@ void Chess::makeMove(Move move) {
 
 //Unmakes a move based on given parameters.
 void Chess::unmakeMove(MoveUnmake unmake) {
+    halfMoves--;
     castlingRights = unmake.castlingRights;
     enPassant = unmake.enPassant;
     if (tolower(square[unmake.move.to]) == 'k') {

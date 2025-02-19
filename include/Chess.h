@@ -86,7 +86,7 @@ public:
     vector<string> previousMoves; // The previous moves made.
     array <int, 2> kingPos; // 0=b, 1=w. Is an array and not struct for easy use alongside whosTurn.
     bool endgame = false; // Whether the game has reached the endgame, used for evaluation.
-    bool showDebugMessages = false; // Whether or not to show debug messages
+    bool showDebugMessages = true; // Whether or not to show debug messages
     Move negaMaxResult{ 0,1,EMPTY }; // The result of searching for a best move.
     unordered_map<string, int> positionCount; //Hashmap of how frequently each position has happened.
 
